@@ -1,0 +1,132 @@
+# DigitalOcean App Platform Specification
+# Docs: https://docs.digitalocean.com/products/app-platform/reference/app-spec/
+#
+# IMPORTANT: Before deploying, you need to:
+# 1. Replace YOUR_GITHUB_USERNAME/knife-throw with your actual GitHub repo
+# 2. Set up environment variables in the DigitalOcean dashboard
+
+name: oreo-app
+region: blr  # Bangalore, India (closest to your location)
+
+services:
+  - name: web
+    # GitHub repository configuration
+    # IMPORTANT: Update this with your actual GitHub repository
+    github:
+      repo: YOUR_GITHUB_USERNAME/knife-throw
+      branch: main
+      deploy_on_push: true
+
+    # Build configuration using Dockerfile
+    dockerfile_path: Dockerfile
+
+    # Build arguments for NEXT_PUBLIC_* environment variables
+    # These are embedded into the client bundle at build time
+    build_command: ""
+    
+    # Resource allocation (adjust based on your needs)
+    # Options: basic-xxs, basic-xs, basic-s, basic-m, professional-xs, professional-s, professional-m, professional-l, professional-xl
+    instance_size_slug: basic-xxs
+    instance_count: 1
+
+    # HTTP configuration
+    http_port: 3000
+    
+    # Routes
+    routes:
+      - path: /
+
+    # Health check configuration
+    health_check:
+      http_path: /
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+
+    # Environment variables
+    # Set these in the DigitalOcean dashboard under App Settings > Environment Variables
+    envs:
+      # ========== Runtime Environment ==========
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: PORT
+        value: "3000"
+      
+      # ========== Firebase Client-side (NEXT_PUBLIC_*) ==========
+      # These are also needed as build args for client bundle
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        scope: BUILD_TIME
+        type: SECRET
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        scope: BUILD_TIME
+        type: SECRET
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        scope: BUILD_TIME
+        type: SECRET
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        scope: BUILD_TIME
+        type: SECRET
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        scope: BUILD_TIME
+        type: SECRET
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        scope: BUILD_TIME
+        type: SECRET
+      
+      # ========== Application URLs ==========
+      - key: NEXT_PUBLIC_MATCHMAKING_URL
+        scope: BUILD_TIME
+        type: SECRET
+      - key: NEXT_PUBLIC_APP_URL
+        scope: BUILD_TIME
+        type: SECRET
+      - key: NEXT_PUBLIC_GAMES_BASE_URL
+        scope: BUILD_TIME
+        value: "/games"
+      
+      # ========== Firebase Server-side ==========
+      # IMPORTANT: This is the Base64-encoded service account JSON
+      # To create: base64 -w 0 your-service-account.json
+      - key: FIREBASE_SERVICE_ACCOUNT_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: FIREBASE_PROJECT_ID
+        scope: RUN_TIME
+        type: SECRET
+      
+      # ========== Matchmaking Server ==========
+      - key: MATCHMAKING_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: MATCHMAKING_SERVER_KEY
+        scope: RUN_TIME
+        type: SECRET
+      
+      # ========== Payment Gateway ==========
+      - key: CASHFREE_CLIENT_ID
+        scope: RUN_TIME
+        type: SECRET
+      - key: CASHFREE_CLIENT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+      - key: CASHFREE_ENVIRONMENT
+        scope: RUN_TIME
+        value: "PRODUCTION"
+      
+      # ========== WebRTC TURN Server ==========
+      - key: TURN_SHARED_SECRET
+        scope: RUN_TIME
+        type: SECRET
+      - key: TURN_SERVER_URL
+        scope: RUN_TIME
+        type: SECRET
+
+# Alerts for monitoring
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED
+  - rule: DEPLOYMENT_LIVE

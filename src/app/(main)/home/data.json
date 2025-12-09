@@ -1,0 +1,94 @@
+{
+    "games": [
+        {
+            "id": "random",
+            "label": "Random"
+        },
+        {
+            "id": "knife-throw",
+            "label": "Knife Throw"
+        },
+        {
+            "id": "ping-pong",
+            "label": "Ping Pong"
+        },
+        {
+            "id": "tic-tac-toe",
+            "label": "Tic Tac Toe"
+        }
+    ],
+    "regions": [
+        {
+            "id": "global",
+            "label": "Global"
+        },
+        {
+            "id": "na",
+            "label": "North America"
+        },
+        {
+            "id": "eu",
+            "label": "Europe"
+        },
+        {
+            "id": "as",
+            "label": "Asia"
+        },
+        {
+            "id": "sa",
+            "label": "South America"
+        },
+        {
+            "id": "af",
+            "label": "Africa"
+        },
+        {
+            "id": "oc",
+            "label": "Oceania"
+        }
+    ],
+    "genders": [
+        {
+            "id": "any",
+            "label": "Both"
+        },
+        {
+            "id": "male",
+            "label": "Male"
+        },
+        {
+            "id": "female",
+            "label": "Female"
+        }
+    ],
+    "languages": [
+        {
+            "id": "en",
+            "label": "English"
+        },
+        {
+            "id": "es",
+            "label": "Spanish"
+        },
+        {
+            "id": "fr",
+            "label": "French"
+        },
+        {
+            "id": "de",
+            "label": "German"
+        },
+        {
+            "id": "zh",
+            "label": "Chinese"
+        },
+        {
+            "id": "hi",
+            "label": "Hindi"
+        },
+        {
+            "id": "ar",
+            "label": "Arabic"
+        }
+    ]
+}

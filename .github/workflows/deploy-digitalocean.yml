@@ -1,0 +1,94 @@
+name: Deploy to DigitalOcean App Platform
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  # Job 1: Build and Test (validation)
+  build-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build application (validation)
+        run: npm run build
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          NEXT_PUBLIC_MATCHMAKING_URL: ${{ secrets.NEXT_PUBLIC_MATCHMAKING_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_GAMES_BASE_URL: /games
+
+  # Job 2: Deploy to DigitalOcean App Platform
+  deploy:
+    name: Deploy to DigitalOcean
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Deploy to App Platform
+        run: |
+          # Check if app exists, update or create
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header 2>/dev/null | grep "oreo-app" | awk '{print $1}' || echo "")
+          
+          if [ -n "$APP_ID" ]; then
+            echo "🔄 App exists (ID: $APP_ID), updating..."
+            doctl apps update "$APP_ID" --spec .do/app.yaml --wait
+          else
+            echo "🆕 Creating new app..."
+            doctl apps create --spec .do/app.yaml --wait
+          fi
+
+      - name: Get deployment URL
+        run: |
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "oreo-app" | awk '{print $1}')
+          if [ -n "$APP_ID" ]; then
+            APP_URL=$(doctl apps get "$APP_ID" --format DefaultIngress --no-header)
+            echo "✅ Deployment successful!"
+            echo "🌐 App URL: https://$APP_URL"
+          fi

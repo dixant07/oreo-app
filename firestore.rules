@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper to check if user is accessing their own document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Allow any authenticated user to read profiles (needed for matching/friends)
+      allow read: if isAuthenticated();
+      
+      // Allow users to create/update their own profile
+      allow create, update: if isOwner(userId);
+      
+      // Prevent deletion (only admin)
+      allow delete: if false;
+
+      // Allow users to read their own friends list
+      match /friends/{friendId} {
+        allow read: if isOwner(userId);
+      }
+
+      // Allow users to read their own conversations list
+      match /conversations/{conversationId} {
+        allow read: if isOwner(userId);
+        allow update: if isOwner(userId); 
+      }
+    }
+
+    // Reports collection - primarily written by server
+    match /reports/{reportId} {
+      allow read: if false; // Only admin/backend
+      allow write: if false;
+    }
+
+    match /chats/{chatId} {
+        allow read: if isAuthenticated(); 
+        allow write: if isAuthenticated();
+
+        match /messages/{messageId} {
+            allow read: if isAuthenticated();
+            allow create: if isAuthenticated();
+        }
+    }
+
+    // Notifications (Friend Requests, Game Invites)
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (resource.data.toUid == request.auth.uid);
+      allow create: if isAuthenticated();
+    }
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
