@@ -20,9 +20,13 @@ COPY games/ ./
 # Create output directory for built games
 RUN mkdir -p /app/games-dist
 
+# Install bash for more robust scripting
+RUN apk add --no-cache bash
+
 # Build each game that has a package.json
 # Games are expected to output to a 'dist' directory
-RUN echo "=== Starting Games Build ===" && \
+RUN /bin/bash -c '\
+    echo "=== Starting Games Build ===" && \
     for dir in */; do \
     dir_name="${dir%/}"; \
     if [ -f "$dir_name/package.json" ]; then \
@@ -50,7 +54,8 @@ RUN echo "=== Starting Games Build ===" && \
     echo "" && \
     echo "=== Games Build Complete ===" && \
     echo "Built games:" && \
-    ls -la /app/games-dist/
+    ls -la /app/games-dist/ \
+    '
 
 # ===========================================
 # Stage 2: Install Dependencies
