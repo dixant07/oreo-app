@@ -143,8 +143,8 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Firebase credentials for server-side API routes
-COPY --from=builder --chown=nextjs:nodejs /app/oreo-video-app-v1-firebase-adminsdk-fbsvc-751f63dcd0.json ./
+# Firebase credentials are loaded from FIREBASE_SERVICE_ACCOUNT_KEY env var (Base64 encoded)
+# Set this in DigitalOcean App Platform environment variables
 
 # Switch to non-root user
 USER nextjs
