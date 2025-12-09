@@ -11,7 +11,7 @@
 # Stage 1: Build All Games
 # ===========================================
 # This stage discovers and builds all game projects in the /games folder
-FROM node:18-alpine AS games-builder
+FROM node:20-alpine AS games-builder
 WORKDIR /app/games
 
 # Copy the games source folder
@@ -60,7 +60,7 @@ RUN /bin/bash -c '\
 # ===========================================
 # Stage 2: Install Dependencies
 # ===========================================
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine
@@ -74,7 +74,7 @@ RUN npm ci
 # ===========================================
 # Stage 3: Build Next.js Application
 # ===========================================
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy dependencies from deps stage
@@ -117,7 +117,7 @@ RUN npm run build
 # ===========================================
 # Stage 4: Production Runtime (Standalone)
 # ===========================================
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Set production environment
