@@ -28,7 +28,7 @@ class MatchmakingClient {
                 userId: 'server-admin',
                 serverKey: process.env.MATCHMAKING_SERVER_KEY || 'server-secret-key'
             },
-            path: '/matchmaking-server',
+            path: '/socket.io',
             reconnection: true,
             reconnectionAttempts: this.maxReconnectAttempts,
             reconnectionDelay: 1000,

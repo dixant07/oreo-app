@@ -45,7 +45,7 @@ export class NetworkManager {
 
                 this.socket = io(MATCHMAKING_URL, {
                     auth: { token },
-                    path: '/matchmaking-server',
+                    path: '/socket.io',
                     transports: ['websocket', 'polling']
                 });
 
