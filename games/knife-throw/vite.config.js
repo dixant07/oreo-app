@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-    base: '/knife-throw/', // Served from this subdirectory
+    base: '/games/knife-throw/', // Served from /games/ subdirectory in Next.js app
     build: {
         outDir: 'dist',
         assetsDir: 'assets',
@@ -16,6 +16,10 @@ export default defineConfig({
                 }
             }
         }
+    },
+    css: {
+        // Don't use parent PostCSS config (from Next.js)
+        postcss: {}
     },
     server: {
         port: 3000
