@@ -1,3 +1,6 @@
+// Base path for assets - uses Vite's base URL in production
+const BASE_PATH = import.meta.env.BASE_URL || '/games/knife-throw/';
+
 export const CONFIG = {
     // Game dimensions
     WIDTH: 800,
@@ -41,7 +44,7 @@ export const CONFIG = {
         SERVER_URL: (window.location.port === '5173' || window.location.port === '3000')
             ? 'http://localhost:5000'
             : window.location.origin,
-        SOCKET_PATH: '/socket.io',
+        SOCKET_PATH: '/socket.io',  // Default Socket.IO path (server has its own domain)
         RECONNECT_DELAY: 3000,
     },
 
@@ -55,18 +58,18 @@ export const CONFIG = {
         UI_BACKGROUND: 'rgba(0, 0, 0, 0.7)',
     },
 
-    // Audio
+    // Audio - paths relative to base URL
     AUDIO: {
-        HIT: 'audio/hit.mp3',
-        FAIL: 'audio/fail.mp3',
-        THROW: 'audio/throw.mp3',
+        HIT: `${BASE_PATH}audio/hit.mp3`,
+        FAIL: `${BASE_PATH}audio/fail.mp3`,
+        THROW: `${BASE_PATH}audio/throw.mp3`,
     },
 
-    // Assets
+    // Assets - paths relative to base URL
     ASSETS: {
-        TARGET: 'assets/target.svg',
-        BLUE_KNIFE: 'assets/blue_knife.svg',
-        RED_KNIFE: 'assets/red_knife.svg',
-        DUMMY_KNIFE: 'assets/dummy_knife.svg',
+        TARGET: `${BASE_PATH}assets/target.svg`,
+        BLUE_KNIFE: `${BASE_PATH}assets/blue_knife.svg`,
+        RED_KNIFE: `${BASE_PATH}assets/red_knife.svg`,
+        DUMMY_KNIFE: `${BASE_PATH}assets/dummy_knife.svg`,
     }
 };
