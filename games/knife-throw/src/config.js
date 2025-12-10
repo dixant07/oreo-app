@@ -41,6 +41,7 @@ export const CONFIG = {
         SERVER_URL: (window.location.port === '5173' || window.location.port === '3000')
             ? 'http://localhost:5000'
             : window.location.origin,
+        SOCKET_PATH: '/socket.io',
         RECONNECT_DELAY: 3000,
     },
 

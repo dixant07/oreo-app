@@ -50,6 +50,7 @@ export class NetworkManager {
                         // though ideally server should look for userId if no token:
                         token: this.userId
                     },
+                    path: CONFIG.NETWORK.SOCKET_PATH,  // Must match server's SOCKET_IO_PATH
                     transports: ['websocket', 'polling']
                 });
 
