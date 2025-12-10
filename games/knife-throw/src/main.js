@@ -24,6 +24,15 @@ CONFIG.MATCH_DATA = {
     mode: urlParams.get('mode')
 };
 
+// Override server URL if provided via URL parameter (for embedded games)
+const serverUrl = urlParams.get('serverUrl');
+if (serverUrl) {
+    CONFIG.NETWORK.SERVER_URL = decodeURIComponent(serverUrl);
+    console.log('[Main] Using server URL from params:', CONFIG.NETWORK.SERVER_URL);
+} else {
+    console.log('[Main] Using default server URL:', CONFIG.NETWORK.SERVER_URL);
+}
+
 console.log('[Main] Match Data:', CONFIG.MATCH_DATA);
 
 const config = {

@@ -35,6 +35,9 @@ export default function VideoGamePage() {
 // Game Base URL - defaults to Vite dev server for local development
 const GAME_BASE_URL = process.env.NEXT_PUBLIC_GAMES_BASE_URL || "http://localhost:3000";
 
+// Matchmaking Server URL - the game needs this to connect to the correct WebSocket server
+const MATCHMAKING_URL = process.env.NEXT_PUBLIC_MATCHMAKING_URL || "http://localhost:5000";
+
 function VideoGameContent() {
     const { networkManager } = useNetwork();
     const router = useRouter();
@@ -92,7 +95,8 @@ function VideoGameContent() {
                 opponentUid: data.opponentUid,
                 mode: 'embedded',
                 userId: currentUserId,
-                isInitiator: data.isInitiator ? 'true' : 'false'
+                isInitiator: data.isInitiator ? 'true' : 'false',
+                serverUrl: encodeURIComponent(MATCHMAKING_URL)
             });
             if (data.gameId) {
                 setGameUrl(`${GAME_BASE_URL}/${data.gameId}?${params.toString()}`);
@@ -123,7 +127,8 @@ function VideoGameContent() {
                 opponentUid: networkManager.opponentUid || '',
                 mode: 'embedded',
                 userId: currentUserId,
-                isInitiator: 'true'
+                isInitiator: 'true',
+                serverUrl: encodeURIComponent(MATCHMAKING_URL)
             });
             setGameUrl(`${GAME_BASE_URL}/${gameId}?${params.toString()}`);
             setShowGame(true);
@@ -215,7 +220,8 @@ function VideoGameContent() {
                 role: 'guest',
                 opponentId: networkManager.opponentId || '',
                 mode: 'embedded',
-                userId: currentUserId
+                userId: currentUserId,
+                serverUrl: encodeURIComponent(MATCHMAKING_URL)
             });
             // Construct URL dynamically based on gameId, or default to knife-throw if needed
             // Assuming gameId maps to route
@@ -381,7 +387,8 @@ function VideoGameContent() {
                                                             opponentUid: networkManager?.opponentUid || '',
                                                             mode: 'embedded',
                                                             userId: networkManager?.userId || auth.currentUser?.uid || '',
-                                                            isInitiator: 'false'
+                                                            isInitiator: 'false',
+                                                            serverUrl: encodeURIComponent(MATCHMAKING_URL)
                                                         });
                                                         setGameUrl(`${GAME_BASE_URL}/${incomingInvite.gameId}?${params.toString()}`);
                                                         setShowGame(true);
