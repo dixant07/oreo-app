@@ -52,6 +52,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { MembershipDialog } from "@/components/dialogs/MembershipDialog";
 
 interface TopBarProps {
     mode: 'game' | 'video';
@@ -74,6 +75,7 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
     const [selectedLanguage, setSelectedLanguage] = useState(data.languages[0].id);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatStartWith, setChatStartWith] = useState<string | null>(null);
+    const [isMembershipOpen, setIsMembershipOpen] = useState(false);
 
     // Incoming Call State
     const [incomingCall, setIncomingCall] = useState<{ fromUid: string; fromName: string; fromAvatar?: string } | null>(null);
@@ -313,11 +315,14 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
 
                 {/* Right: User Panel */}
                 <div className="flex items-center gap-4 ml-auto">
-                    {/* Tier Badge */}
-                    <div className="bg-yellow-100 text-yellow-700 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-sm">
+                    {/* Tier Badge - Clickable to open membership dialog */}
+                    <button
+                        onClick={() => setIsMembershipOpen(true)}
+                        className="bg-yellow-100 text-yellow-700 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-sm hover:bg-yellow-200 hover:shadow-md transition-all cursor-pointer"
+                    >
                         <Crown className="w-4 h-4 text-yellow-600 fill-current" />
-                        {profile?.tier?.toUpperCase() || 'FREE'}
-                    </div>
+                        {profile?.subscription?.tier?.toUpperCase() || 'FREE'}
+                    </button>
 
                     {/* Chats Button */}
                     <Button
@@ -573,6 +578,11 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
                     }
                     resetCallState();
                 }}
+            />
+
+            <MembershipDialog
+                open={isMembershipOpen}
+                onOpenChange={setIsMembershipOpen}
             />
         </>
     );

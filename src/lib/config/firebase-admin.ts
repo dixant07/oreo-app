@@ -46,30 +46,43 @@ function initializeFirebaseAdmin() {
             const serviceAccount = JSON.parse(fs.readFileSync(defaultPath, 'utf8'));
             credential = admin.credential.cert(serviceAccount);
         } else {
-            // Priority 4: Try application default credentials (for GCP environments)
-            console.log('[Firebase Admin] No credentials found. Trying application default credentials...');
+            // Priority 4: Try application default credentials (for GCP environments) or auto-discovery
+            console.log('[Firebase Admin] No credentials found. Trying default initialization...');
             try {
+                // First try explicit applicationDefault, mostly for local emulators or some GCP contexts
                 credential = admin.credential.applicationDefault();
             } catch (error) {
-                console.error('\n❌ FIREBASE ADMIN INITIALIZATION FAILED ❌');
-                console.error('Could not load Firebase credentials.');
-                console.error('\nPlease do ONE of the following:');
-                console.error('1. Set FIREBASE_SERVICE_ACCOUNT_KEY env var (Base64 encoded service account JSON)');
-                console.error('2. Set GOOGLE_APPLICATION_CREDENTIALS to point to your service account JSON file');
-                console.error('3. Place the service account JSON file in the project root (for local dev only)');
-                console.error('4. Run on Google Cloud Platform with default credentials\n');
-                throw error;
+                console.warn('[Firebase Admin] applicationDefault failed, attempting generic initializeApp (Cloud Functions context)...');
+                // If this is a Cloud Function, generic init often works best
+                try {
+                    if (admin.apps.length === 0) {
+                        admin.initializeApp();
+                        console.log('✅ Firebase Admin Initialized (Default)');
+                        return;
+                    }
+                } catch (innerError) {
+                    console.error('\n❌ FIREBASE ADMIN INITIALIZATION FAILED ❌');
+                    console.error('Final fallback failed:', innerError);
+                    // Don't throw here to avoid crashing the process instantly, 
+                    // though usage will likely fail later.
+                }
+                return;
             }
         }
     }
 
-    admin.initializeApp({
-        credential: credential,
-        projectId: process.env.FIREBASE_PROJECT_ID || 'oreo-video-app-v1'
-    });
-
-    console.log('✅ Firebase Admin Initialized');
-    console.log('Project ID:', admin.app().options.projectId);
+    if (admin.apps.length === 0) {
+        try {
+            admin.initializeApp({
+                credential: credential,
+                projectId: process.env.FIREBASE_PROJECT_ID || 'oreo-video-app-v1'
+            });
+            console.log('✅ Firebase Admin Initialized');
+            console.log('Project ID:', admin.app().options.projectId);
+        } catch (e) {
+            console.error('Error during admin.initializeApp:', e);
+        }
+    }
 }
 
 // Initialize on first import

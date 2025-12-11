@@ -10,7 +10,10 @@ export interface UserProfile {
     name: string;
     email: string;
     avatarUrl: string;
-    tier: 'Free' | 'Gold' | 'Diamond';
+    subscription: {
+        expiresAt: string;
+        tier: 'Free' | 'Gold' | 'Diamond';
+    }
     counters: {
         unreadNotifs: number;
         unreadChats: number;

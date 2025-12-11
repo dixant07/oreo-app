@@ -87,6 +87,12 @@ services:
       - key: NEXT_PUBLIC_GAMES_BASE_URL
         scope: BUILD_TIME
         value: "/games"
+      - key: NEXT_PUBLIC_CASHFREE_BACKEND_URL
+        scope: BUILD_TIME
+        type: SECRET
+      - key: NEXT_PUBLIC_CASHFREE_ENVIRONMENT
+        scope: BUILD_TIME
+        value: "production"
       
       # ========== Firebase Server-side ==========
       # IMPORTANT: This is the Base64-encoded service account JSON

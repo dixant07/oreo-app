@@ -319,9 +319,9 @@ export default function LandingPage() {
                 <div className="relative bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-orange-500/30 transition-all duration-300 hover:-translate-y-2">
                   <div className="absolute top-4 right-4 z-10">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${game.badge === 'Popular' ? 'bg-orange-500 text-white' :
-                        game.badge === 'New' ? 'bg-green-500 text-white' :
-                          game.badge === 'Classic' ? 'bg-blue-500 text-white' :
-                            'bg-zinc-700 text-zinc-300'
+                      game.badge === 'New' ? 'bg-green-500 text-white' :
+                        game.badge === 'Classic' ? 'bg-blue-500 text-white' :
+                          'bg-zinc-700 text-zinc-300'
                       }`}>
                       {game.badge}
                     </span>
@@ -483,7 +483,7 @@ export default function LandingPage() {
               <ul className="space-y-2 text-zinc-400 text-sm">
                 <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
                 <li><a href="#games" className="hover:text-white transition-colors">Games</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
+                <li><Link href="/membership" className="hover:text-white transition-colors">Pricing</Link></li>
                 <li><a href="#" className="hover:text-white transition-colors">Mobile App</a></li>
               </ul>
             </div>
@@ -494,16 +494,16 @@ export default function LandingPage() {
                 <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+                <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold text-white mb-4">Legal</h4>
               <ul className="space-y-2 text-zinc-400 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Cookie Policy</a></li>
+                <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link></li>
+                <li><Link href="/refund-policy" className="hover:text-white transition-colors">Refund & Cancellation</Link></li>
                 <li><a href="#" className="hover:text-white transition-colors">Community Guidelines</a></li>
               </ul>
             </div>

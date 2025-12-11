@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
                 language: 'en',
                 gender: 'unknown',
                 interests: [],
-                tier: 'Free',
                 avatarUrl: picture || '',
                 isOnline: true,
                 lastActive: admin.firestore.FieldValue.serverTimestamp(),

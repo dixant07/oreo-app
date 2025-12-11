@@ -1,50 +1,77 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ArrowLeft, Check, Crown, Star, Zap } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Star, Zap, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useCashfree } from '@/lib/hooks/useCashfree';
+import { useUser } from '@/lib/contexts/AuthContext';
+
+const plans = [
+    {
+        id: 'FREE' as const,
+        name: 'Free',
+        price: '₹0',
+        period: '/month',
+        features: ['50 Matches/day', 'Standard Video Quality', 'Ad-supported'],
+        color: 'bg-gray-100',
+        textColor: 'text-gray-900',
+        icon: <Star className="w-6 h-6 text-gray-500" />,
+        buttonClass: 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+    },
+    {
+        id: 'GOLD' as const,
+        name: 'Gold',
+        price: '₹199',
+        period: '/month',
+        features: ['200 Matches/day', 'HD Video Quality', 'No Ads', 'Gender Filter'],
+        color: 'bg-yellow-100',
+        textColor: 'text-yellow-800',
+        popular: true,
+        icon: <Zap className="w-6 h-6 text-yellow-600" />,
+        buttonClass: 'bg-orange-500 hover:bg-orange-600 text-white'
+    },
+    {
+        id: 'DIAMOND' as const,
+        name: 'Diamond',
+        price: '₹499',
+        period: '/month',
+        features: ['Unlimited Matches', '4K Video Quality', 'VIP Support', 'All Filters', 'Profile Badge'],
+        color: 'bg-blue-100',
+        textColor: 'text-blue-800',
+        icon: <Crown className="w-6 h-6 text-blue-600" />,
+        buttonClass: 'bg-blue-600 hover:bg-blue-700 text-white'
+    }
+];
 
 export default function MembershipPage() {
     const router = useRouter();
+    const { profile } = useUser();
+    const { initiatePayment, isLoading, error, isScriptLoaded } = useCashfree();
 
-    const plans = [
-        {
-            name: 'Free',
-            price: '$0',
-            period: '/month',
-            features: ['Basic Matchmaking', 'Standard Video Quality', 'Ad-supported'],
-            color: 'bg-gray-100',
-            textColor: 'text-gray-900',
-            buttonVariant: 'outline' as const,
-            icon: <Star className="w-6 h-6 text-gray-500" />
-        },
-        {
-            name: 'Gold',
-            price: '$9.99',
-            period: '/month',
-            features: ['Priority Matchmaking', 'HD Video Quality', 'No Ads', 'Exclusive Games'],
-            color: 'bg-yellow-100',
-            textColor: 'text-yellow-800',
-            buttonVariant: 'default' as const,
-            popular: true,
-            icon: <Zap className="w-6 h-6 text-yellow-600" />
-        },
-        {
-            name: 'Diamond',
-            price: '$19.99',
-            period: '/month',
-            features: ['Instant Matchmaking', '4K Video Quality', 'VIP Support', 'All Games Unlocked', 'Profile Badge'],
-            color: 'bg-blue-100',
-            textColor: 'text-blue-800',
-            buttonVariant: 'default' as const,
-            icon: <Crown className="w-6 h-6 text-blue-600" />
-        }
-    ];
+    const currentTier = profile?.subscription?.tier?.toUpperCase() || 'FREE';
+
+    const handleUpgrade = async (planId: 'GOLD' | 'DIAMOND') => {
+        await initiatePayment(planId);
+    };
+
+    const getButtonText = (planId: string) => {
+        if (planId === 'FREE') return 'Current Plan';
+        if (currentTier === planId) return 'Current Plan';
+        if (isLoading) return 'Processing...';
+        return 'Upgrade Now';
+    };
+
+    const isButtonDisabled = (planId: string) => {
+        if (planId === 'FREE') return true;
+        if (currentTier === planId) return true;
+        if (isLoading) return true;
+        if (!isScriptLoaded) return true;
+        return false;
+    };
 
     return (
-        <div className="min-h-screen bg-[#FFF8F0] p-8 font-sans">
+        <div className="min-h-screen bg-gradient-to-br from-[#FFF8F0] to-orange-50 p-8 font-sans">
             <div className="max-w-6xl mx-auto">
                 <Button
                     variant="ghost"
@@ -60,9 +87,19 @@ export default function MembershipPage() {
                     <p className="text-xl text-gray-500">Choose the plan that fits your gaming style.</p>
                 </div>
 
+                {error && (
+                    <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-center max-w-md mx-auto">
+                        {error}
+                    </div>
+                )}
+
                 <div className="grid md:grid-cols-3 gap-8">
                     {plans.map((plan) => (
-                        <Card key={plan.name} className={`relative p-8 rounded-[2rem] border-0 shadow-xl flex flex-col ${plan.popular ? 'ring-4 ring-orange-400 scale-105' : 'bg-white'}`}>
+                        <div
+                            key={plan.id}
+                            className={`relative p-8 rounded-3xl bg-white shadow-xl flex flex-col transition-all duration-300 hover:shadow-2xl ${plan.popular ? 'ring-4 ring-orange-400 scale-105' : ''
+                                }`}
+                        >
                             {plan.popular && (
                                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-orange-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
                                     Most Popular
@@ -91,16 +128,26 @@ export default function MembershipPage() {
                             </ul>
 
                             <Button
-                                className={`w-full rounded-xl h-12 font-bold text-lg ${plan.name === 'Gold' ? 'bg-orange-500 hover:bg-orange-600 text-white' :
-                                        plan.name === 'Diamond' ? 'bg-blue-600 hover:bg-blue-700 text-white' :
-                                            'bg-gray-100 hover:bg-gray-200 text-gray-900'
-                                    }`}
+                                className={`w-full rounded-xl h-12 font-bold text-lg ${plan.buttonClass}`}
+                                disabled={isButtonDisabled(plan.id)}
+                                onClick={() => {
+                                    if (plan.id !== 'FREE') {
+                                        handleUpgrade(plan.id);
+                                    }
+                                }}
                             >
-                                {plan.name === 'Free' ? 'Current Plan' : 'Upgrade Now'}
+                                {isLoading && plan.id !== 'FREE' && currentTier !== plan.id ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : null}
+                                {getButtonText(plan.id)}
                             </Button>
-                        </Card>
+                        </div>
                     ))}
                 </div>
+
+                <p className="text-center text-sm text-gray-400 mt-10">
+                    Secure payment powered by Cashfree. Cancel anytime.
+                </p>
             </div>
         </div>
     );
