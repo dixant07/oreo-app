@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -48,3 +48,5 @@ jobs:
           NEXT_PUBLIC_MATCHMAKING_URL: ${{ secrets.NEXT_PUBLIC_MATCHMAKING_URL || 'http://localhost:5000' }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'http://localhost:9191' }}
           NEXT_PUBLIC_GAMES_BASE_URL: /games
+          NEXT_PUBLIC_CASHFREE_BACKEND_URL: ${{ secrets.NEXT_PUBLIC_CASHFREE_BACKEND_URL || 'https://sandbox.cashfree.com' }}
+          NEXT_PUBLIC_CASHFREE_ENVIRONMENT: ${{ secrets.NEXT_PUBLIC_CASHFREE_ENVIRONMENT || 'sandbox' }}

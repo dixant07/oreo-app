@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -54,6 +54,8 @@ jobs:
           NEXT_PUBLIC_MATCHMAKING_URL: ${{ secrets.NEXT_PUBLIC_MATCHMAKING_URL }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           NEXT_PUBLIC_GAMES_BASE_URL: /games
+          NEXT_PUBLIC_CASHFREE_BACKEND_URL: ${{ secrets.NEXT_PUBLIC_CASHFREE_BACKEND_URL }}
+          NEXT_PUBLIC_CASHFREE_ENVIRONMENT: ${{ secrets.NEXT_PUBLIC_CASHFREE_ENVIRONMENT }}
 
   # Job 2: Deploy to DigitalOcean App Platform
   deploy:
