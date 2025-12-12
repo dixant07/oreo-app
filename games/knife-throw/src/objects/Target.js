@@ -14,8 +14,8 @@ export class Target {
 
     createSprite() {
         this.sprite = this.scene.add.image(
-            CONFIG.TARGET.CENTER_X,
-            CONFIG.TARGET.CENTER_Y,
+            this.scene.centerX,
+            this.scene.centerY,
             'target'
         );
 

@@ -55,7 +55,21 @@ export const CONFIG = {
         DUMMY: 0x888888, // Gray
         BACKGROUND: 0x2c3e50,
         UI_TEXT: '#ffffff',
+        UI_TEXT: '#ffffff',
         UI_BACKGROUND: 'rgba(0, 0, 0, 0.7)',
+    },
+
+    // Scoreboard
+    SCORE_BOARD: {
+        MARGIN_X: 20,
+        MARGIN_Y: 20,
+        WIDTH: 140,
+        HEIGHT: 60,
+        RADIUS: 10,
+        BG_ALPHA: 0.8,
+        TEXT_COLOR: '#ffffff',
+        FONT_SIZE_NAME: '16px',
+        FONT_SIZE_SCORE: '24px'
     },
 
     // Audio - paths relative to base URL

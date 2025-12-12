@@ -51,6 +51,10 @@ export class GameScene extends Phaser.Scene {
         // Rotation control
         this.rotationTimer = 0;
         this.nextRotationChange = 2000;
+
+        // Center coordinates
+        this.centerX = 0;
+        this.centerY = 0;
     }
 
     preload() {
@@ -76,11 +80,19 @@ export class GameScene extends Phaser.Scene {
         // Set background
         this.cameras.main.setBackgroundColor(CONFIG.COLORS.BACKGROUND);
 
+        // Initialize center
+        this.centerX = this.scale.width / 2;
+        this.centerY = this.scale.height / 2;
+
         // Create target
         this.target = new Target(this);
 
         // Create UI
         this.createUI();
+
+        // Handle Resize
+        this.scale.on('resize', this.handleResize, this);
+        this.handleResize({ width: this.scale.width, height: this.scale.height });
 
         // Setup network event listeners
         this.setupNetworkEvents();
@@ -103,45 +115,35 @@ export class GameScene extends Phaser.Scene {
             strokeThickness: 4
         };
 
-        // Round text
-        this.roundText = this.add.text(padding, padding, 'Round: 1', style);
-        this.roundText.setDepth(100);
+        // Create Graphic Scoreboard
+        this.createScoreBoard();
 
-        // Score text
-        this.scoreText = this.add.text(
-            CONFIG.WIDTH - padding,
-            padding,
-            'You: 0 | Opponent: 0',
-            style
-        );
-        this.scoreText.setOrigin(1, 0);
-        this.scoreText.setDepth(100);
-
-        // Knives remaining
-        this.knivesText = this.add.text(
-            CONFIG.WIDTH / 2,
-            padding,
-            'Knives: 6',
-            style
-        );
-        this.knivesText.setOrigin(0.5, 0);
-        this.knivesText.setDepth(100);
+        // Create Side Bar (Round & Knives)
+        this.createSideBar();
 
         // Status text
+        // Create Status Graphic Background First
+
+        // Status text
+        // Create Status Graphic Background First
+        this.statusBg = this.add.graphics();
+        this.statusBg.setDepth(100);
+
         this.statusText = this.add.text(
-            CONFIG.WIDTH / 2,
-            CONFIG.HEIGHT - padding,
-            'Connecting to server...',
+            this.centerX,
+            this.scale.height - padding * 2,
+            'Connecting...',
             {
                 fontSize: '20px',
-                fill: '#ffff00',
-                fontFamily: 'Arial, sans-serif',
-                stroke: '#000000',
-                strokeThickness: 3
+                fill: '#ffffff', // White text
+                fontFamily: 'Arial, sans-serif'
             }
         );
-        this.statusText.setOrigin(0.5, 1);
-        this.statusText.setDepth(100);
+        this.statusText.setOrigin(0.5, 0.5);
+        this.statusText.setDepth(101); // Above BG
+
+        // Initial Background Draw
+        this.updateStatusDisplay('Connecting...');
 
         // Connect Button
         this.connectButton = this.add.text(
@@ -165,9 +167,33 @@ export class GameScene extends Phaser.Scene {
 
         this.connectButton.on('pointerdown', () => {
             this.connectButton.setVisible(false);
-            this.statusText.setText('Establishing connection...');
+            this.updateStatusDisplay('Connecting...');
             this.network.connectToGame();
         });
+    }
+
+    updateStatusDisplay(text) {
+        if (!this.statusText) return;
+
+        this.statusText.setText(text);
+        this.statusText.setVisible(true);
+
+        // Update Background
+        const padding = 20;
+        const width = this.statusText.width + padding * 2;
+        const height = this.statusText.height + padding;
+        const radius = 15;
+
+        this.statusBg.clear();
+        this.statusBg.setVisible(true);
+        this.statusBg.fillStyle(0x000000, 1); // Black background
+        this.statusBg.fillRoundedRect(
+            this.statusText.x - width / 2,
+            this.statusText.y - height / 2,
+            width,
+            height,
+            radius
+        );
     }
 
     async connectToServer() {
@@ -176,7 +202,7 @@ export class GameScene extends Phaser.Scene {
 
             if (CONFIG.MATCH_DATA && CONFIG.MATCH_DATA.roomId && CONFIG.MATCH_DATA.mode === 'embedded') {
                 console.log('Using embedded match data:', CONFIG.MATCH_DATA);
-                this.statusText.setText('Joining match...');
+                this.updateStatusDisplay('Joining...');
 
                 // Wait 500ms to ensure ICE servers are received first
                 // The ice_servers_config event fires shortly after connect
@@ -184,29 +210,35 @@ export class GameScene extends Phaser.Scene {
 
                 this.network.handleMatchFound(CONFIG.MATCH_DATA);
             } else {
-                this.statusText.setText('Finding opponent...');
+                this.updateStatusDisplay('Finding opponent...');
                 this.network.findMatch();
             }
         } catch (error) {
             console.error('Failed to connect:', error);
-            this.statusText.setText('Connection failed. Retrying...');
+            this.updateStatusDisplay('Connection failed. Retrying...');
         }
     }
 
     setupNetworkEvents() {
         this.events.on('queued', () => {
-            this.statusText.setText('Waiting for opponent...');
+            this.updateStatusDisplay('Waiting...');
         });
 
         this.events.on('match_found', (msg) => {
             this.playerRole = msg.role;
-            this.statusText.setText('Match found! Connecting to game...');
+            this.updateStatusDisplay('Waiting...');
             this.network.connectToGame();
         });
 
         // Game connection established
         this.events.on('game_datachannel_open', () => {
-            this.statusText.setText('Connected! Starting game...');
+            this.updateStatusDisplay('Start');
+
+            // Hide status after a moment
+            setTimeout(() => {
+                this.statusText.setVisible(false);
+                this.statusBg.setVisible(false);
+            }, 1000);
 
             // Initialize game-specific connection
             this.gameConnection = new KnifeThrowConnection(
@@ -279,7 +311,7 @@ export class GameScene extends Phaser.Scene {
             this.startGameplay();
         } else {
             // Peer waits for round setup
-            this.statusText.setText('Waiting for round setup...');
+            this.updateStatusDisplay('Waiting...');
 
             // Timeout fallback: if no round setup received in 5 seconds, start anyway
             this.roundSetupTimeout = setTimeout(() => {
@@ -606,13 +638,12 @@ export class GameScene extends Phaser.Scene {
             this.gameOver = true;
             this.canThrow = false;
 
-            if (this.playerScore > this.opponentScore) {
-                this.statusText.setText('🎉 YOU WIN! 🎉');
-                this.statusText.setFill('#00ff00');
-            } else {
-                this.statusText.setText('😔 YOU LOSE 😔');
-                this.statusText.setFill('#ff0000');
-            }
+            // Hide existing status UI
+            if (this.statusText) this.statusText.setVisible(false);
+            if (this.statusBg) this.statusBg.setVisible(false);
+
+            const isWin = this.playerScore > this.opponentScore;
+            this.createGameOverScreen(isWin);
 
             this.target.stopRotation();
         }
@@ -629,14 +660,267 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateUI() {
-        this.scoreText.setText(`You: ${this.playerScore} | Opponent: ${this.opponentScore}`);
-        this.knivesText.setText(`Knives: ${this.knivesRemaining}`);
-        this.roundText.setText(`Round: ${this.currentRound}`);
+        // this.scoreText.setText(`You: ${this.playerScore} | Opponent: ${this.opponentScore}`); // Legacy
+        this.redrawScoreBoard();
+        this.updateSideBar();
+    }
+
+    handleResize(gameSize) {
+        const width = gameSize.width;
+        const height = gameSize.height;
+
+        this.centerX = width / 2;
+        this.centerY = height / 2;
+
+        this.cameras.main.setViewport(0, 0, width, height);
+
+        // Update Target Position
+        if (this.target && this.target.sprite) {
+            this.target.sprite.setPosition(this.centerX, this.centerY);
+
+            // Re-scale target if needed? 
+            // For now, let's keep it constant size, just centered.
+        }
+
+        // Update UI Positions
+        if (this.statusText) {
+            this.statusText.setPosition(this.centerX, height - 40);
+            this.updateStatusDisplay(this.statusText.text); // Redraw BG
+        }
+        if (this.connectButton) {
+            this.connectButton.setPosition(this.centerX, this.centerY + 50);
+        }
+
+        // Update Scoreboard positions
+        this.updateScoreBoardPositions(width, height);
+        // Update Side Bar positions
+        this.updateSideBarPositions();
+    }
+
+    createSideBar() {
+        // UI Constants for Side Bar
+        this.sideBarConfig = {
+            ROUND_BG_COLOR: 0x000000,
+            ROUND_TEXT_COLOR: '#ffffff',
+            KNIVES_BG_COLOR: 0xFFFF00,
+            KNIVES_TEXT_COLOR: '#000000',
+            PADDING_X: 15,
+            PADDING_Y: 10,
+            RADIUS: 10,
+            GAP: 15,
+            FONT_SIZE: '18px'
+        };
+
+        // Round Group
+        this.roundBg = this.add.graphics();
+        this.roundBg.setDepth(100);
+        this.roundText = this.add.text(0, 0, 'Round 1', {
+            fontSize: this.sideBarConfig.FONT_SIZE,
+            fill: this.sideBarConfig.ROUND_TEXT_COLOR,
+            fontFamily: 'Arial',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.roundText.setDepth(101);
+
+        // Knives Group
+        this.knivesBg = this.add.graphics();
+        this.knivesBg.setDepth(100);
+        this.knivesText = this.add.text(0, 0, 'Knives 6', {
+            fontSize: this.sideBarConfig.FONT_SIZE,
+            fill: this.sideBarConfig.KNIVES_TEXT_COLOR,
+            fontFamily: 'Arial',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.knivesText.setDepth(101);
+
+        this.updateSideBarPositions();
+    }
+
+    updateSideBarPositions() {
+        if (!this.roundText) return;
+
+        const cfg = this.sideBarConfig;
+        const leftMargin = 20;
+
+        // Update Text Content first to measure
+        this.roundText.setText(`Round ${this.currentRound}`);
+        this.knivesText.setText(`Knives ${this.knivesRemaining}`);
+
+        const roundW = this.roundText.width + cfg.PADDING_X * 2;
+        const roundH = this.roundText.height + cfg.PADDING_Y * 2;
+
+        const knivesW = this.knivesText.width + cfg.PADDING_X * 2;
+        const knivesH = this.knivesText.height + cfg.PADDING_Y * 2;
+
+        // Vertical Center Group
+        const totalHeight = roundH + cfg.GAP + knivesH;
+        const startY = this.centerY - (totalHeight / 2);
+
+        // Round Position (Top of group)
+        const roundCX = leftMargin + roundW / 2;
+        const roundCY = startY + roundH / 2;
+        this.roundText.setPosition(roundCX, roundCY);
+
+        this.roundBg.clear();
+        this.roundBg.fillStyle(cfg.ROUND_BG_COLOR, 1);
+        this.roundBg.fillRoundedRect(leftMargin, startY, roundW, roundH, cfg.RADIUS);
+
+        // Knives Position (Bottom of group)
+        const knivesCX = leftMargin + knivesW / 2;
+        const knivesCY = startY + roundH + cfg.GAP + knivesH / 2;
+        this.knivesText.setPosition(knivesCX, knivesCY);
+
+        // Ensure Knives Text is Black & Bg is Yellow
+        this.knivesBg.clear();
+        this.knivesBg.fillStyle(cfg.KNIVES_BG_COLOR, 1);
+        this.knivesBg.fillRoundedRect(leftMargin, startY + roundH + cfg.GAP, knivesW, knivesH, cfg.RADIUS);
+    }
+
+    updateSideBar() {
+        this.updateSideBarPositions();
+    }
+
+    createScoreBoard() {
+        const sb = CONFIG.SCORE_BOARD;
+
+        // Backgrounds (Rounded Rects) - Graphics objects
+        this.bgA = this.add.graphics();
+        this.bgB = this.add.graphics();
+
+        // Text Styles
+        const nameStyle = { fontSize: sb.FONT_SIZE_NAME, fill: sb.TEXT_COLOR, fontFamily: 'Arial' };
+        const scoreStyle = { fontSize: sb.FONT_SIZE_SCORE, fill: sb.TEXT_COLOR, fontFamily: 'Arial', fontStyle: 'bold' };
+
+        // Player A Elements
+        this.nameTextA = this.add.text(0, 0, 'Player A', nameStyle).setOrigin(0.5);
+        this.scoreTextA = this.add.text(0, 0, '0', scoreStyle).setOrigin(0.5);
+
+        // Player B Elements
+        this.nameTextB = this.add.text(0, 0, 'Player B', nameStyle).setOrigin(0.5);
+        this.scoreTextB = this.add.text(0, 0, '0', scoreStyle).setOrigin(0.5);
+
+        // Set Depths
+        this.bgA.setDepth(90);
+        this.bgB.setDepth(90);
+        this.nameTextA.setDepth(91);
+        this.scoreTextA.setDepth(91);
+        this.nameTextB.setDepth(91);
+        this.scoreTextB.setDepth(91);
+    }
+
+    updateScoreBoardPositions(width, height) {
+        if (!this.nameTextA) return;
+
+        const sb = CONFIG.SCORE_BOARD;
+        const topY = sb.MARGIN_Y;
+        const leftX = sb.MARGIN_X + (sb.WIDTH / 2);
+        const rightX = width - sb.MARGIN_X - (sb.WIDTH / 2);
+
+        this._pos1 = { x: leftX, y: topY };
+        this._pos2 = { x: rightX, y: topY };
+
+        this.redrawScoreBoard();
+    }
+
+    redrawScoreBoard() {
+        const sb = CONFIG.SCORE_BOARD;
+
+        let leftName = "You";
+        let rightName = "Opponent";
+        let leftScoreVal = this.playerScore;
+        let rightScoreVal = this.opponentScore;
+
+        // Colors
+        let leftColor = CONFIG.COLORS.PLAYER_B; // Player is Blue usually? (Wait, PlayerA=Red, PlayerB=Blue)
+        // Let's check logic:
+        // this.playerRole 'A' -> I am Red. 'B' -> I am Blue.
+
+        let rightColor = CONFIG.COLORS.PLAYER_A;
+
+        if (this.playerRole) {
+            if (this.playerRole === 'A') {
+                // I am A (Red) -> Left
+                leftColor = CONFIG.COLORS.PLAYER_A; // Red
+                leftScoreVal = this.playerScore;
+
+                rightColor = CONFIG.COLORS.PLAYER_B; // Blue
+                rightScoreVal = this.opponentScore;
+            } else {
+                // I am B (Blue) -> Left
+                leftColor = CONFIG.COLORS.PLAYER_B; // Blue
+                leftScoreVal = this.playerScore;
+
+                rightColor = CONFIG.COLORS.PLAYER_A; // Red
+                rightScoreVal = this.opponentScore;
+            }
+        } else {
+            // Default if unknown
+            leftColor = CONFIG.COLORS.PLAYER_B; // Assume Blue (Player 1?)
+            rightColor = CONFIG.COLORS.PLAYER_A;
+        }
+
+        const posLeft = this._pos1 || { x: sb.MARGIN_X + sb.WIDTH / 2, y: sb.MARGIN_Y };
+        const posRight = this._pos2 || { x: this.scale.width - sb.MARGIN_X - sb.WIDTH / 2, y: sb.MARGIN_Y };
+
+        // Draw Backgrounds
+        this.bgA.clear();
+        this.bgB.clear();
+
+        this.bgA.fillStyle(leftColor, sb.BG_ALPHA);
+        this.bgA.fillRoundedRect(posLeft.x - sb.WIDTH / 2, posLeft.y, sb.WIDTH, sb.HEIGHT, sb.RADIUS);
+
+        this.bgB.fillStyle(rightColor, sb.BG_ALPHA);
+        this.bgB.fillRoundedRect(posRight.x - sb.WIDTH / 2, posRight.y, sb.WIDTH, sb.HEIGHT, sb.RADIUS);
+
+        // Update Texts
+        this.nameTextA.setText(leftName);
+        this.nameTextA.setPosition(posLeft.x, posLeft.y + 15);
+        this.scoreTextA.setText(leftScoreVal);
+        this.scoreTextA.setPosition(posLeft.x, posLeft.y + 40);
+
+        this.nameTextB.setText(rightName);
+        this.nameTextB.setPosition(posRight.x, posRight.y + 15);
+        this.scoreTextB.setText(rightScoreVal);
+        this.scoreTextB.setPosition(posRight.x, posRight.y + 40);
     }
 
     updateStatusText() {
-        if (this.gameOver) return;
-        this.statusText.setText('Throw!');
-        this.statusText.setFill('#ffffff');
+        // "Throw!" text removed as requested
+    }
+
+    createGameOverScreen(isWin) {
+        const width = this.scale.width;
+        const height = this.scale.height;
+
+        // Determine Winning Color
+        let color;
+        // My Role: A (Red usually), B (Blue usually)
+        // If I win (isWin=true), use MY color.
+        // If I lose (isWin=false), use OPPONENT color.
+
+        const myColor = (this.playerRole === 'A') ? CONFIG.COLORS.PLAYER_A : CONFIG.COLORS.PLAYER_B;
+        const opponentColor = (this.playerRole === 'A') ? CONFIG.COLORS.PLAYER_B : CONFIG.COLORS.PLAYER_A;
+
+        color = isWin ? myColor : opponentColor;
+
+        // Full Screen Background
+        const graphics = this.add.graphics();
+        graphics.setDepth(200); // High depth to cover everything
+        graphics.fillStyle(color, 1);
+        graphics.fillRect(0, 0, width, height);
+
+        // Center Text
+        const text = isWin ? "You Won" : "Opponent Won";
+
+        const gameOverText = this.add.text(width / 2, height / 2, text, {
+            fontSize: '64px',
+            fill: '#ffffff',
+            fontFamily: 'Arial',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 6
+        });
+        gameOverText.setOrigin(0.5);
+        gameOverText.setDepth(201);
     }
 }

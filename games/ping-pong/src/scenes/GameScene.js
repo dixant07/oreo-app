@@ -19,7 +19,12 @@ export default class GameScene extends Phaser.Scene {
         this.role = null; // 'A' or 'B'
         this.network = new NetworkManager(this);
         this.pingPongConnection = null;
+        // Game state
+        this.role = null; // 'A' or 'B'
+        this.network = new NetworkManager(this);
+        this.pingPongConnection = null;
         this.gameStarted = false;
+        this.gameOver = false; // New flag for win state
 
         // UI elements
         this.statusText = null;
@@ -214,20 +219,25 @@ export default class GameScene extends Phaser.Scene {
         ).setOrigin(0.5);
 
         // Network Status text
+        // Create Status Graphic Background First
+        this.statusBg = this.add.graphics();
+        this.statusBg.setDepth(100);
+
         this.statusText = this.add.text(
             this.centerX,
-            GameConfig.DISPLAY.HEIGHT - 20,
-            'Connecting to server...',
+            GameConfig.DISPLAY.HEIGHT - 40,
+            'Connecting...',
             {
                 fontSize: '20px',
-                fill: '#ffff00',
-                fontFamily: 'Arial, sans-serif',
-                stroke: '#000000',
-                strokeThickness: 3
+                fill: '#ffffff', // White text
+                fontFamily: 'Arial, sans-serif'
             }
         );
-        this.statusText.setOrigin(0.5, 1);
-        this.statusText.setDepth(100);
+        this.statusText.setOrigin(0.5, 0.5);
+        this.statusText.setDepth(101); // Above BG
+
+        // Initial Background Draw
+        this.updateStatusDisplay('Connecting...');
 
         // Connect Button
         this.connectButton = this.add.text(
@@ -251,9 +261,33 @@ export default class GameScene extends Phaser.Scene {
 
         this.connectButton.on('pointerdown', () => {
             this.connectButton.setVisible(false);
-            this.statusText.setText('Establishing connection...');
+            this.updateStatusDisplay('Connecting...');
             this.network.connectToGame();
         });
+    }
+
+    updateStatusDisplay(text) {
+        if (!this.statusText) return;
+
+        this.statusText.setText(text);
+        this.statusText.setVisible(true);
+
+        // Update Background
+        const padding = 20;
+        const width = this.statusText.width + padding * 2;
+        const height = this.statusText.height + padding;
+        const radius = 15;
+
+        this.statusBg.clear();
+        this.statusBg.setVisible(true);
+        this.statusBg.fillStyle(0x000000, 1); // Black background
+        this.statusBg.fillRoundedRect(
+            this.statusText.x - width / 2,
+            this.statusText.y - height / 2,
+            width,
+            height,
+            radius
+        );
     }
 
     createScoreBoard() {
@@ -314,8 +348,8 @@ export default class GameScene extends Phaser.Scene {
         // If role is not known yet, we can still render the board with defaults
         const sb = GameConfig.UI.SCORE_BOARD;
 
-        let leftName = "Player A";
-        let rightName = "Player B";
+        let leftName = "You";
+        let rightName = "Opponent";
         let leftScoreVal = this.scoreA;
         let rightScoreVal = this.scoreB;
 
@@ -326,19 +360,23 @@ export default class GameScene extends Phaser.Scene {
         if (this.role) {
             // Role known - customize "You" vs "Opponent"
             if (this.role === 'A') {
-                // I am A (Red)
+                // I am A (Red) -> Left is Me (You)
                 leftName = "You";
-                leftColor = 0xff0000; // Red
+                leftColor = 0xff0000;
+                leftScoreVal = this.scoreA;
 
                 rightName = "Opponent";
-                rightColor = 0x0000ff; // Blue
+                rightColor = 0x0000ff;
+                rightScoreVal = this.scoreB;
             } else {
-                // I am B (Blue)
+                // I am B (Blue) -> Left is Me (You)
                 leftName = "You";
-                leftColor = 0x0000ff; // Blue
+                leftColor = 0x0000ff; // My Color
+                leftScoreVal = this.scoreB; // My Score
 
                 rightName = "Opponent";
-                rightColor = 0xff0000; // Red
+                rightColor = 0xff0000; // Opponent Color
+                rightScoreVal = this.scoreA; // Opponent Score
             }
         }
 
@@ -392,19 +430,19 @@ export default class GameScene extends Phaser.Scene {
 
             if (GameConfig.MATCH_DATA && GameConfig.MATCH_DATA.roomId && GameConfig.MATCH_DATA.mode === 'embedded') {
                 console.log('Using embedded match data:', GameConfig.MATCH_DATA);
-                this.statusText.setText('Joining match...');
+                this.updateStatusDisplay('Joining...');
 
                 // Wait 500ms to ensure ICE servers are received first
                 await new Promise(resolve => setTimeout(resolve, 500));
 
                 this.network.handleMatchFound(GameConfig.MATCH_DATA);
             } else {
-                this.statusText.setText('Finding opponent...');
+                this.updateStatusDisplay('Finding opponent...');
                 this.network.findMatch();
             }
         } catch (error) {
             console.error('Failed to connect:', error);
-            this.statusText.setText('Connection failed. Retrying...');
+            this.updateStatusDisplay('Connection failed. Retrying...');
             this.connectButton.setText('RETRY CONNECTION');
             this.connectButton.setVisible(true);
 
@@ -420,13 +458,13 @@ export default class GameScene extends Phaser.Scene {
     setupNetworkEvents() {
         // NetworkManager events
         this.events.on('queued', () => {
-            this.statusText.setText('Waiting for opponent...');
+            this.updateStatusDisplay('Waiting...');
         });
 
         this.events.on('match_found', (msg) => {
             this.role = msg.role; // Set local role
             this.isInitiator = msg.isInitiator;
-            this.statusText.setText('Match found! Connecting to game...');
+            this.updateStatusDisplay('Waiting...');
 
             // Now that we have a role, we can properly label "You" and "Opponent"
             this.redrawScoreBoard();
@@ -437,11 +475,12 @@ export default class GameScene extends Phaser.Scene {
         // Game connection established (WebRTC DataChannel open)
         this.events.on('game_datachannel_open', () => {
             console.log('Game Data Channel Open - Starting Sync');
-            this.statusText.setText('Connected! Starting game...');
+            this.updateStatusDisplay('Start');
 
             // Hide status text after a moment
-            this.time.delayedCall(2000, () => {
+            this.time.delayedCall(1000, () => {
                 this.statusText.setVisible(false);
+                this.statusBg.setVisible(false);
             });
 
             // Initialize game-specific connection
@@ -539,7 +578,7 @@ export default class GameScene extends Phaser.Scene {
 
     updateInfoText() {
         if (this.isServing) {
-            this.infoText.setText(`Player ${this.currentServer} Serving - Hit ball to start`);
+            this.infoText.setText(''); // Removed "Serving - Hit ball to start" as requested
         } else {
             this.infoText.setText('');
         }
@@ -830,17 +869,72 @@ export default class GameScene extends Phaser.Scene {
             this.currentServer = 'B';
         }
         this.isServing = true;
-        this.isServing = true;
+
+        // Reset ball first
+        this.resetBall();
 
         // Update scoreboard
         this.redrawScoreBoard();
-        // this.scoreText.setText(`A: ${this.scoreA}  B: ${this.scoreB}`); // Replaced by new scoreboard
-        this.resetBall();
+
+        // Check for Win Condition
+        this.checkWinCondition();
 
         // Send Score Update
         if (this.pingPongConnection) {
             this.pingPongConnection.sendScoreUpdate(this.scoreA, this.scoreB, this.currentServer);
         }
+    }
+
+    checkWinCondition() {
+        if (this.gameOver) return;
+
+        const winningScore = GameConfig.GAME.WINNING_SCORE;
+        let winner = null;
+
+        if (this.scoreA >= winningScore) {
+            winner = 'A';
+        } else if (this.scoreB >= winningScore) {
+            winner = 'B';
+        }
+
+        if (winner) {
+            this.handleWin(winner);
+        }
+    }
+
+    handleWin(winner) {
+        this.gameOver = true;
+        this.gameStarted = false; // Stop updates
+
+        const isMeWinner = (this.role === winner);
+
+        // Visuals
+        const overlayColor = (winner === 'A') ? 0xff0000 : 0x0000ff; // Red (A) or Blue (B)
+        const overlayAlpha = GameConfig.UI.WIN_OVERLAY_ALPHA;
+
+        const winText = isMeWinner ? "You Won" : "Opponent Won";
+
+        // Create Full Screen Overlay
+        const overlay = this.add.graphics();
+        overlay.setDepth(200);
+        overlay.fillStyle(overlayColor, overlayAlpha);
+        overlay.fillRect(0, 0, GameConfig.DISPLAY.WIDTH, GameConfig.DISPLAY.HEIGHT);
+
+        // Create Win Text
+        const text = this.add.text(
+            this.centerX,
+            this.centerY,
+            winText,
+            {
+                fontSize: '64px',
+                fill: '#ffffff',
+                fontFamily: 'Arial',
+                fontStyle: 'bold',
+                stroke: '#000000',
+                strokeThickness: 6
+            }
+        ).setOrigin(0.5);
+        text.setDepth(201);
     }
 
     resetBall() {
@@ -935,10 +1029,14 @@ export default class GameScene extends Phaser.Scene {
         this.scoreB = msg.scoreB;
         this.currentServer = msg.currentServer;
         this.isServing = true;
+        this.isServing = true;
         this.resetBall();
 
         // Update scoreboard
         this.redrawScoreBoard();
+
+        // Check for win on remote update too
+        this.checkWinCondition();
         // this.scoreText.setText(`A: ${this.scoreA}  B: ${this.scoreB}`);
     }
 }

@@ -13,8 +13,8 @@ export class Knife {
 
     createSprite() {
         const radius = CONFIG.TARGET.RADIUS - CONFIG.KNIFE.PENETRATION_DEPTH;
-        const centerX = CONFIG.TARGET.CENTER_X;
-        const centerY = CONFIG.TARGET.CENTER_Y;
+        const centerX = this.scene.centerX;
+        const centerY = this.scene.centerY;
 
         // Calculate position on the disc edge
         const radians = Phaser.Math.DegToRad(this.angle);
@@ -50,8 +50,8 @@ export class Knife {
         if (!this.sprite || !this.isStuck) return;
 
         const radius = CONFIG.TARGET.RADIUS - CONFIG.KNIFE.PENETRATION_DEPTH;
-        const centerX = CONFIG.TARGET.CENTER_X;
-        const centerY = CONFIG.TARGET.CENTER_Y;
+        const centerX = this.scene.centerX;
+        const centerY = this.scene.centerY;
 
         // Update angle based on disc rotation
         const currentAngle = this.angle + discRotation;
@@ -97,8 +97,8 @@ export class ThrowingKnife {
     }
 
     createSprite() {
-        const centerX = CONFIG.TARGET.CENTER_X;
-        const centerY = CONFIG.TARGET.CENTER_Y;
+        const centerX = this.scene.centerX;
+        const centerY = this.scene.centerY;
 
         // Start position - bottom for player, top for opponent
         const startY = this.isOpponent ? 50 : CONFIG.HEIGHT - 50;
@@ -124,7 +124,7 @@ export class ThrowingKnife {
     update(delta) {
         if (!this.isFlying || !this.sprite) return false;
 
-        const centerY = CONFIG.TARGET.CENTER_Y;
+        const centerY = this.scene.centerY;
         const targetRadius = CONFIG.TARGET.RADIUS;
         const penetrationDepth = CONFIG.KNIFE.PENETRATION_DEPTH || 0;
 
