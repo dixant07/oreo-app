@@ -1,7 +1,5 @@
 import Phaser from 'phaser';
 import GameConfig from './config/GameConfig.js';
-import BootScene from './scenes/BootScene.js';
-import MenuScene from './scenes/MenuScene.js';
 import GameScene from './scenes/GameScene.js';
 
 // Get user ID from URL parameters or generate logical default for testing
@@ -66,7 +64,7 @@ const config = {
             debug: GameConfig.DEBUG.PHYSICS_DEBUG
         }
     },
-    scene: [BootScene, MenuScene, GameScene]
+    scene: [GameScene]
 };
 
 const game = new Phaser.Game(config);

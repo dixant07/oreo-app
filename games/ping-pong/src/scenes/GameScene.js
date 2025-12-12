@@ -3,6 +3,7 @@ import GameConfig from '../config/GameConfig.js';
 import TableTennisConfig from '../config/TableTennisConfig.js';
 import PhysicsUtils from '../utils/PhysicsUtils.js';
 import ViewTransform from '../utils/ViewTransform.js';
+import { NetworkManager } from '../network/NetworkManager.js';
 import { PingPongConnection } from '../network/PingPongConnection.js';
 
 /**
@@ -13,11 +14,65 @@ export default class GameScene extends Phaser.Scene {
         super(TableTennisConfig.SCENES.GAME);
     }
 
-    init(data) {
-        this.network = data.network;
-        this.matchData = data.matchData;
-        this.role = this.matchData.role; // 'A' (Host/Bottom) or 'B' (Client/Top)
-        this.isInitiator = this.matchData.isInitiator;
+    init() {
+        // Game state
+        this.role = null; // 'A' or 'B'
+        this.network = new NetworkManager(this);
+        this.pingPongConnection = null;
+        this.gameStarted = false;
+
+        // UI elements
+        this.statusText = null;
+        this.connectButton = null;
+        this.scoreText = null;
+        this.infoText = null;
+
+        // Logical State (World Coordinates)
+        this.ballState = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, spin: 0 };
+        this.batAState = { x: 0, y: 200, vx: 0, vy: 0, prevX: 0, prevY: 200 };
+        this.batBState = { x: 0, y: -200, vx: 0, vy: 0, prevX: 0, prevY: -200 };
+
+        // Collision cooldown tracking
+        this.lastHitTime = 0;
+        this.COLLISION_COOLDOWN = 150;
+
+        // Game State
+        this.isServing = true;
+        this.currentServer = GameConfig.GAME.INITIAL_SERVER;
+
+        // Score
+        this.scoreA = 0;
+        this.scoreB = 0;
+    }
+
+    preload() {
+        // Load table tennis assets (moved from BootScene)
+        this.load.image(
+            TableTennisConfig.ASSETS.BALL,
+            GameConfig.ASSETS.BALL_SPRITE
+        );
+        this.load.image(
+            TableTennisConfig.ASSETS.BAT_A,
+            GameConfig.ASSETS.BAT_A_SPRITE
+        );
+        this.load.image(
+            TableTennisConfig.ASSETS.BAT_B,
+            GameConfig.ASSETS.BAT_B_SPRITE
+        );
+        this.load.image(
+            TableTennisConfig.ASSETS.TABLE,
+            GameConfig.ASSETS.TABLE_SPRITE
+        );
+
+        // Load audio
+        this.load.audio(
+            TableTennisConfig.ASSETS.BAT_HIT,
+            GameConfig.ASSETS.BAT_HIT_AUDIO
+        );
+        this.load.audio(
+            TableTennisConfig.ASSETS.TABLE_BOUNCE,
+            GameConfig.ASSETS.TABLE_BOUNCE_AUDIO
+        );
     }
 
     create() {
@@ -26,6 +81,9 @@ export default class GameScene extends Phaser.Scene {
 
         // Initialize view transform utility
         this.viewTransform = new ViewTransform(this.centerX, this.centerY);
+
+        // Set background
+        this.cameras.main.setBackgroundColor(GameConfig.DISPLAY.BACKGROUND_COLOR);
 
         // Add Table
         this.table = this.add.image(
@@ -54,33 +112,42 @@ export default class GameScene extends Phaser.Scene {
             TableTennisConfig.ASSETS.BALL
         ).setScale(GameConfig.ASSETS.BALL_BASE_SCALE);
 
-        // Logical State (World Coordinates)
-        // Center is (0,0). A is +Y, B is -Y.
-        this.ballState = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, spin: 0 }; // Added spin
-        this.batAState = { x: 0, y: 200, vx: 0, vy: 0, prevX: 0, prevY: 200 }; // Added velocity tracking
-        this.batBState = { x: 0, y: -200, vx: 0, vy: 0, prevX: 0, prevY: -200 }; // Added velocity tracking
+        // Create UI
+        this.createUI();
 
-        // Collision cooldown tracking
-        this.lastHitTime = 0;
-        this.COLLISION_COOLDOWN = 150;  // 150ms cooldown between hits
+        // Setup network event listeners
+        this.setupNetworkEvents();
 
-        // Game State
-        this.isServing = true;
-        this.currentServer = GameConfig.GAME.INITIAL_SERVER;
+        // Connect to server
+        this.connectToServer();
 
-        // Score
-        this.scoreA = 0;
-        this.scoreB = 0;
+        // Input
+        this.input.on('pointermove', (pointer) => {
+            if (this.gameStarted) {
+                this.handlePointerMove(pointer);
+            }
+        });
+
+        // Start Game Loop logic
+        this.resetBall();
+    }
+
+    createUI() {
+        const padding = 20;
+        const style = {
+            fontSize: GameConfig.UI.SCORE_FONT_SIZE,
+            fill: GameConfig.UI.SCORE_COLOR
+        };
+
+        // Score text
         this.scoreText = this.add.text(
             GameConfig.UI.SCORE_POSITION.x,
             GameConfig.UI.SCORE_POSITION.y,
             'A: 0  B: 0',
-            {
-                fontSize: GameConfig.UI.SCORE_FONT_SIZE,
-                fill: GameConfig.UI.SCORE_COLOR
-            }
+            style
         );
 
+        // Info/Status text (serving, etc.)
         this.infoText = this.add.text(
             this.centerX,
             GameConfig.UI.INFO_Y,
@@ -91,48 +158,142 @@ export default class GameScene extends Phaser.Scene {
             }
         ).setOrigin(0.5);
 
-        // Input
-        this.input.on('pointermove', (pointer) => {
-            this.handlePointerMove(pointer);
+        // Network Status text
+        this.statusText = this.add.text(
+            this.centerX,
+            GameConfig.DISPLAY.HEIGHT - padding,
+            'Connecting to server...',
+            {
+                fontSize: '20px',
+                fill: '#ffff00',
+                fontFamily: 'Arial, sans-serif',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        );
+        this.statusText.setOrigin(0.5, 1);
+        this.statusText.setDepth(100);
+
+        // Connect Button
+        this.connectButton = this.add.text(
+            this.centerX,
+            this.centerY + 50,
+            'CONNECT TO GAME',
+            {
+                fontSize: '32px',
+                fill: '#00ff00',
+                backgroundColor: '#000000',
+                padding: { x: 20, y: 10 },
+                fontFamily: 'Arial, sans-serif',
+                stroke: '#ffffff',
+                strokeThickness: 2
+            }
+        );
+        this.connectButton.setOrigin(0.5);
+        this.connectButton.setDepth(101);
+        this.connectButton.setInteractive({ useHandCursor: true });
+        this.connectButton.setVisible(false);
+
+        this.connectButton.on('pointerdown', () => {
+            this.connectButton.setVisible(false);
+            this.statusText.setText('Establishing connection...');
+            this.network.connectToGame();
+        });
+    }
+
+    async connectToServer() {
+        try {
+            await this.network.connect();
+
+            if (GameConfig.MATCH_DATA && GameConfig.MATCH_DATA.roomId && GameConfig.MATCH_DATA.mode === 'embedded') {
+                console.log('Using embedded match data:', GameConfig.MATCH_DATA);
+                this.statusText.setText('Joining match...');
+
+                // Wait 500ms to ensure ICE servers are received first
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                this.network.handleMatchFound(GameConfig.MATCH_DATA);
+            } else {
+                this.statusText.setText('Finding opponent...');
+                this.network.findMatch();
+            }
+        } catch (error) {
+            console.error('Failed to connect:', error);
+            this.statusText.setText('Connection failed. Retrying...');
+            this.connectButton.setText('RETRY CONNECTION');
+            this.connectButton.setVisible(true);
+
+            // Retry handler
+            this.connectButton.removeAllListeners('pointerdown');
+            this.connectButton.on('pointerdown', () => {
+                this.connectButton.setVisible(false);
+                this.connectToServer();
+            });
+        }
+    }
+
+    setupNetworkEvents() {
+        // NetworkManager events
+        this.events.on('queued', () => {
+            this.statusText.setText('Waiting for opponent...');
         });
 
-        // Network Listeners - Update NetworkManager to use this scene
-        this.network.scene = this;
-        if (this.network.gameConnection) {
-            this.network.gameConnection.eventEmitter = this.events;
-        }
+        this.events.on('match_found', (msg) => {
+            this.role = msg.role; // Set local role
+            this.isInitiator = msg.isInitiator;
+            this.statusText.setText('Match found! Connecting to game...');
+            this.network.connectToGame();
+        });
 
-        // Setup Event Listeners
+        // Game connection established (WebRTC DataChannel open)
         this.events.on('game_datachannel_open', () => {
             console.log('Game Data Channel Open - Starting Sync');
-            if (this.network.gameConnection && !this.pingPongConnection) {
+            this.statusText.setText('Connected! Starting game...');
+
+            // Hide status text after a moment
+            this.time.delayedCall(2000, () => {
+                this.statusText.setVisible(false);
+            });
+
+            // Initialize game-specific connection
+            if (this.network.gameConnection) {
                 this.pingPongConnection = new PingPongConnection(
                     this.network.gameConnection,
                     this
                 );
                 this.pingPongConnection.startHeartbeat();
             }
+
+            this.startGameplay();
         });
 
-        // If connection is already open (from MenuScene start)
-        if (this.network.gameConnection && this.network.gameConnection.isConnected) {
-            console.log('Game connection already open');
-            this.pingPongConnection = new PingPongConnection(
-                this.network.gameConnection,
-                this
-            );
-            this.pingPongConnection.startHeartbeat();
-        }
+        this.events.on('connection_failed', () => {
+            this.statusText.setText('Connection lost. Please refresh.');
+            this.statusText.setVisible(true);
+            this.gameStarted = false;
+        });
 
+        this.events.on('webrtc_disconnected', () => {
+            this.statusText.setText('Opponent disconnected.');
+            this.statusText.setVisible(true);
+            this.gameStarted = false;
+        });
+
+        // Game specific events
         this.events.on('remote_bat_update', (msg) => this.handleRemoteBat(msg));
         this.events.on('remote_hit_event', (msg) => this.handleRemoteHit(msg));
         this.events.on('remote_score_update', (msg) => this.handleRemoteScore(msg));
+    }
 
-        // Start Game Loop
+    startGameplay() {
+        this.gameStarted = true;
         this.resetBall();
+        this.updateInfoText();
     }
 
     update(time, delta) {
+        if (!this.gameStarted) return;
+
         const dt = delta / 1000;
 
         // BOTH players simulate physics locally
