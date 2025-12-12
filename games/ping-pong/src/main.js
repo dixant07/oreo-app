@@ -50,10 +50,10 @@ console.log('[Main] Match Data:', GameConfig.MATCH_DATA);
 const config = {
     type: Phaser.AUTO,
     scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: GameConfig.DISPLAY.WIDTH,
-        height: GameConfig.DISPLAY.HEIGHT,
+        width: '100%',
+        height: '100%',
         parent: GameConfig.DISPLAY.PARENT
     },
     backgroundColor: GameConfig.DISPLAY.BACKGROUND_COLOR,

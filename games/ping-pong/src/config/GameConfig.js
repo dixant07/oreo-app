@@ -13,10 +13,12 @@ const GameConfig = {
     // DISPLAY SETTINGS
     // ============================================
     DISPLAY: {
-        WIDTH: 500,
-        HEIGHT: 700,
+        WIDTH: window.innerWidth,
+        HEIGHT: window.innerHeight,
+        TARGET_WIDTH: 500, // Reference width for scaling
+        TARGET_HEIGHT: 700, // Reference height for scaling
         PARENT: 'app',
-        BACKGROUND_COLOR: '#2d2d2d',
+        BACKGROUND_COLOR: '#F1C40F', // Yellow/Gold background as requested
         TYPE: 'AUTO', // Phaser.AUTO will be resolved in main.js
     },
 
@@ -110,6 +112,18 @@ const GameConfig = {
         MENU_BUTTON_Y: 400,
 
         // Game scene
+        SCORE_BOARD: {
+            WIDTH: 150,
+            HEIGHT: 60,
+            RADIUS: 15,
+            MARGIN_X: 20,
+            MARGIN_Y: 20,
+            FONT_SIZE_NAME: '18px',
+            FONT_SIZE_SCORE: '24px',
+            TEXT_COLOR: '#ffffff',
+            BG_ALPHA: 0.8
+        },
+
         SCORE_FONT_SIZE: '24px',
         SCORE_COLOR: '#fff',
         SCORE_POSITION: { x: 20, y: 20 },

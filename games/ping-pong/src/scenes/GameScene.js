@@ -24,7 +24,13 @@ export default class GameScene extends Phaser.Scene {
         // UI elements
         this.statusText = null;
         this.connectButton = null;
-        this.scoreText = null;
+        this.scoreGroup = null; // Container for scoreboard elements
+        this.scoreTextA = null;
+        this.scoreTextB = null;
+        this.nameTextA = null;
+        this.nameTextB = null;
+        this.bgA = null;
+        this.bgB = null;
         this.infoText = null;
 
         // Logical State (World Coordinates)
@@ -115,6 +121,12 @@ export default class GameScene extends Phaser.Scene {
         // Create UI
         this.createUI();
 
+        // Setup resize listener
+        this.scale.on('resize', this.handleResize, this);
+
+        // Initial resize to set correct scaling
+        this.handleResize({ width: this.scale.width, height: this.scale.height });
+
         // Setup network event listeners
         this.setupNetworkEvents();
 
@@ -123,6 +135,7 @@ export default class GameScene extends Phaser.Scene {
 
         // Input
         this.input.on('pointermove', (pointer) => {
+            // Adjust pointer for resize if necessary, though pointer coordinates usually scale automatically in RESIZE mode
             if (this.gameStarted) {
                 this.handlePointerMove(pointer);
             }
@@ -137,23 +150,57 @@ export default class GameScene extends Phaser.Scene {
             if (this.network) {
                 this.network.disconnect();
             }
+            this.scale.removeListener('resize', this.handleResize, this);
         });
     }
 
-    createUI() {
-        const padding = 20;
-        const style = {
-            fontSize: GameConfig.UI.SCORE_FONT_SIZE,
-            fill: GameConfig.UI.SCORE_COLOR
-        };
+    handleResize(gameSize) {
+        const width = gameSize.width;
+        const height = gameSize.height;
 
-        // Score text
-        this.scoreText = this.add.text(
-            GameConfig.UI.SCORE_POSITION.x,
-            GameConfig.UI.SCORE_POSITION.y,
-            'A: 0  B: 0',
-            style
-        );
+        this.centerX = width / 2;
+        this.centerY = height / 2;
+
+        this.cameras.main.setViewport(0, 0, width, height);
+
+        // Calculate global scale to fit the target aspect ratio
+        // We want to fit the game area (TARGET_WIDTH x TARGET_HEIGHT) into the window
+        const scaleX = width / GameConfig.DISPLAY.TARGET_WIDTH;
+        const scaleY = height / GameConfig.DISPLAY.TARGET_HEIGHT;
+
+        // Use the smaller scale to ensure everything fits
+        const globalScale = Math.min(scaleX, scaleY);
+
+        // Update ViewTransform
+        this.viewTransform.update(this.centerX, this.centerY, globalScale);
+
+        // Resize and Reposition Table
+        this.table.setPosition(this.centerX, this.centerY);
+        this.table.setScale(GameConfig.ASSETS.TABLE_SCALE * globalScale);
+
+        // Reposition Bats & Ball (rendering loop will handle positions, but we need to update scales)
+        this.batA.setScale(GameConfig.ASSETS.BAT_SCALE * globalScale);
+        this.batB.setScale(GameConfig.ASSETS.BAT_SCALE * globalScale);
+        // Ball scale is dynamic in render(), but base scale depends on global scale now (handled in ViewTransform)
+
+        // UI Repositioning
+        if (this.statusText) {
+            this.statusText.setPosition(this.centerX, height - 20);
+        }
+        if (this.connectButton) {
+            this.connectButton.setPosition(this.centerX, this.centerY + 50);
+        }
+        if (this.infoText) {
+            this.infoText.setPosition(this.centerX, GameConfig.UI.INFO_Y);
+        }
+
+        // Reposition Scoreboard
+        this.updateScoreBoardPositions(width, height);
+    }
+
+    createUI() {
+        // Create Score scoreboard elements
+        this.createScoreBoard();
 
         // Info/Status text (serving, etc.)
         this.infoText = this.add.text(
@@ -169,7 +216,7 @@ export default class GameScene extends Phaser.Scene {
         // Network Status text
         this.statusText = this.add.text(
             this.centerX,
-            GameConfig.DISPLAY.HEIGHT - padding,
+            GameConfig.DISPLAY.HEIGHT - 20,
             'Connecting to server...',
             {
                 fontSize: '20px',
@@ -207,6 +254,136 @@ export default class GameScene extends Phaser.Scene {
             this.statusText.setText('Establishing connection...');
             this.network.connectToGame();
         });
+    }
+
+    createScoreBoard() {
+        const sb = GameConfig.UI.SCORE_BOARD;
+
+        // Backgrounds (Rounded Rects) - Graphics objects
+        this.bgA = this.add.graphics();
+        this.bgB = this.add.graphics();
+
+        // Text Styles
+        const nameStyle = { fontSize: sb.FONT_SIZE_NAME, fill: sb.TEXT_COLOR, fontFamily: 'Arial' };
+        const scoreStyle = { fontSize: sb.FONT_SIZE_SCORE, fill: sb.TEXT_COLOR, fontFamily: 'Arial', fontStyle: 'bold' };
+
+        // Player A Elements (Left side usually, but depends on role)
+        // We initialize them, positions will be set in updateScoreBoardPositions
+        this.nameTextA = this.add.text(0, 0, 'Player A', nameStyle).setOrigin(0.5);
+        this.scoreTextA = this.add.text(0, 0, '0', scoreStyle).setOrigin(0.5);
+
+        // Player B Elements
+        this.nameTextB = this.add.text(0, 0, 'Player B', nameStyle).setOrigin(0.5);
+        this.scoreTextB = this.add.text(0, 0, '0', scoreStyle).setOrigin(0.5);
+
+        // Set Depths to be on top
+        this.bgA.setDepth(90);
+        this.bgB.setDepth(90);
+        this.nameTextA.setDepth(91);
+        this.scoreTextA.setDepth(91);
+        this.nameTextB.setDepth(91);
+        this.scoreTextB.setDepth(91);
+    }
+
+    updateScoreBoardPositions(width, height) {
+        if (!this.nameTextA) return;
+
+        const sb = GameConfig.UI.SCORE_BOARD;
+        const topY = sb.MARGIN_Y;
+        const leftX = sb.MARGIN_X + (sb.WIDTH / 2);
+        const rightX = width - sb.MARGIN_X - (sb.WIDTH / 2); // Mirror on right
+
+        // For now, let's put A on Left and B on Right by default
+        // When role is assigned, we might swap them so "You" is always on one side, but
+        // requested requirement: Top Left = "You", Top Right = "Opponent"
+
+        // We will handle "You" vs "Opponent" text updates in updateScoreBoard() logic
+        // But physically, let's define Block 1 (Left) and Block 2 (Right) positions
+
+        // Left Block (Block 1)
+        this._pos1 = { x: leftX, y: topY };
+
+        // Right Block (Block 2)
+        this._pos2 = { x: rightX, y: topY };
+
+        // We will decide WHICH player goes to WHICH block in redrawScoreBoard()
+        this.redrawScoreBoard();
+    }
+
+    redrawScoreBoard() {
+        // If role is not known yet, we can still render the board with defaults
+        const sb = GameConfig.UI.SCORE_BOARD;
+
+        let leftName = "Player A";
+        let rightName = "Player B";
+        let leftScoreVal = this.scoreA;
+        let rightScoreVal = this.scoreB;
+
+        // Default colors if role unknown
+        let leftColor = 0xff0000; // Red for A
+        let rightColor = 0x0000ff; // Blue for B
+
+        if (this.role) {
+            // Role known - customize "You" vs "Opponent"
+            if (this.role === 'A') {
+                // I am A (Red)
+                leftName = "You";
+                leftColor = 0xff0000; // Red
+
+                rightName = "Opponent";
+                rightColor = 0x0000ff; // Blue
+            } else {
+                // I am B (Blue)
+                leftName = "You";
+                leftColor = 0x0000ff; // Blue
+
+                rightName = "Opponent";
+                rightColor = 0xff0000; // Red
+            }
+        }
+
+        // Use calculated positions or defaults
+        const posLeft = this._pos1 || { x: sb.MARGIN_X + sb.WIDTH / 2, y: sb.MARGIN_Y };
+        const posRight = this._pos2 || { x: GameConfig.DISPLAY.WIDTH - sb.MARGIN_X - sb.WIDTH / 2, y: sb.MARGIN_Y };
+
+        // Draw Backgrounds
+        this.bgA.clear();
+        this.bgB.clear();
+
+        // Left Background
+        this.bgA.fillStyle(leftColor, sb.BG_ALPHA);
+        this.bgA.fillRoundedRect(
+            posLeft.x - sb.WIDTH / 2,
+            posLeft.y,
+            sb.WIDTH,
+            sb.HEIGHT,
+            sb.RADIUS
+        );
+
+        // Right Background
+        this.bgB.fillStyle(rightColor, sb.BG_ALPHA);
+        this.bgB.fillRoundedRect(
+            posRight.x - sb.WIDTH / 2,
+            posRight.y,
+            sb.WIDTH,
+            sb.HEIGHT,
+            sb.RADIUS
+        );
+
+        // Update Texts
+        // Left Side
+        this.nameTextA.setText(leftName);
+        this.nameTextA.setPosition(posLeft.x, posLeft.y + 15);
+
+        this.scoreTextA.setText(leftScoreVal);
+        this.scoreTextA.setPosition(posLeft.x, posLeft.y + 40);
+
+        // Right Side
+        this.nameTextB.setText(rightName);
+        this.nameTextB.setPosition(posRight.x, posRight.y + 15);
+
+        this.scoreTextB.setText(rightScoreVal);
+        this.scoreTextB.setPosition(posRight.x, posRight.y + 40);
     }
 
     async connectToServer() {
@@ -250,6 +427,10 @@ export default class GameScene extends Phaser.Scene {
             this.role = msg.role; // Set local role
             this.isInitiator = msg.isInitiator;
             this.statusText.setText('Match found! Connecting to game...');
+
+            // Now that we have a role, we can properly label "You" and "Opponent"
+            this.redrawScoreBoard();
+
             this.network.connectToGame();
         });
 
@@ -649,7 +830,11 @@ export default class GameScene extends Phaser.Scene {
             this.currentServer = 'B';
         }
         this.isServing = true;
-        this.scoreText.setText(`A: ${this.scoreA}  B: ${this.scoreB}`);
+        this.isServing = true;
+
+        // Update scoreboard
+        this.redrawScoreBoard();
+        // this.scoreText.setText(`A: ${this.scoreA}  B: ${this.scoreB}`); // Replaced by new scoreboard
         this.resetBall();
 
         // Send Score Update
@@ -751,6 +936,9 @@ export default class GameScene extends Phaser.Scene {
         this.currentServer = msg.currentServer;
         this.isServing = true;
         this.resetBall();
-        this.scoreText.setText(`A: ${this.scoreA}  B: ${this.scoreB}`);
+
+        // Update scoreboard
+        this.redrawScoreBoard();
+        // this.scoreText.setText(`A: ${this.scoreA}  B: ${this.scoreB}`);
     }
 }
