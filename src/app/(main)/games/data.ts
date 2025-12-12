@@ -17,12 +17,12 @@ export const games: Game[] = [
         isAvailable: true,
     },
     {
-        id: 'galactic-conquest',
-        title: 'Galactic Conquest',
-        category: 'Strategy',
+        id: 'ping-pong',
+        title: 'Ping Pong',
+        category: '2-Player',
         image: '/strategy.png',
         route: '/video/game',
-        isAvailable: false,
+        isAvailable: true,
     },
     {
         id: 'sudoku-zen',
