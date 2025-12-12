@@ -3,8 +3,8 @@ const BASE_PATH = import.meta.env.BASE_URL || '/games/knife-throw/';
 
 export const CONFIG = {
     // Game dimensions
-    WIDTH: 800,
-    HEIGHT: 600,
+    WIDTH: window.innerWidth,
+    HEIGHT: window.innerHeight,
 
     // Target disc
     TARGET: {

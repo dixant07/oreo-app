@@ -37,13 +37,12 @@ console.log('[Main] Match Data:', CONFIG.MATCH_DATA);
 
 const config = {
     type: Phaser.AUTO,
-    width: '100%',
-    height: '100%',
-    parent: 'game-container',
-    backgroundColor: CONFIG.COLORS.BACKGROUND,
     scale: {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: '100%',
+        height: '100%',
+        parent: 'app',
     },
     scene: [GameScene],
     physics: {
