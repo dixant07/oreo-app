@@ -183,18 +183,32 @@ function VideoGameContent() {
         const unsubAuth = auth.onAuthStateChanged(async (user) => {
             if (user) {
                 console.log("Auth ready, user:", user.uid);
-                if (!networkManager.socket?.connected) {
+
+                // Hydrate if already in a match (e.g. from Internal Navigation)
+                if (networkManager.roomId && networkManager.opponentId) {
+                    console.log("Already in match, hydrating state...");
+                    const matchData = {
+                        roomId: networkManager.roomId,
+                        role: networkManager.role,
+                        opponentId: networkManager.opponentId,
+                        opponentUid: networkManager.opponentUid,
+                        isInitiator: networkManager.isInitiator,
+                    };
+                    handleMatchFound(matchData);
+
+                } else if (!networkManager.socket?.connected) {
                     try {
                         await networkManager.connect();
                         networkManager.findMatch({ mode: 'game' });
                     } catch (err) {
                         console.error("Failed to connect:", err);
                     }
+                } else if (!networkManager.roomId) {
+                    // Connected but no match? Find one.
+                    networkManager.findMatch({ mode: 'game' });
                 }
             } else {
                 console.warn("No user signed in. Connection might fail if guest access is disabled.");
-                // Optional: Attempt connection as guest if server allows (previously we disabled this)
-                // networkManager.connect(); 
             }
         });
 
@@ -468,7 +482,7 @@ function VideoGameContent() {
 
 
                         {/* Skip Button */}
-                        <div className="absolute bottom-4 right-4">
+                        <div className="absolute bottom-4 right-4 z-20">
                             <Button
                                 onClick={handleSkip}
                                 className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-6 py-6 font-bold text-lg shadow-lg flex items-center gap-2 transition-transform hover:scale-105"

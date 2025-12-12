@@ -77,8 +77,12 @@ export class VideoConnection {
                     roomId: this.roomId,
                     service: 'video'
                 });
-            } else if (this.peerConnection?.connectionState === 'disconnected' ||
-                this.peerConnection?.connectionState === 'failed') {
+            } else if (this.peerConnection?.connectionState === 'disconnected') {
+                console.log('[VideoConnection] Connection disconnected (poor connection), waiting...');
+                this.isConnected = false;
+                this.emit('video_connection_unstable');
+            } else if (this.peerConnection?.connectionState === 'failed') {
+                console.log('[VideoConnection] Connection failed (terminal)');
                 this.isConnected = false;
                 this.emit('video_connection_lost');
             }

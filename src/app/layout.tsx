@@ -6,6 +6,8 @@ import { UserProvider } from "@/lib/contexts/AuthContext";
 import { OpponentProvider } from "@/lib/contexts/OpponentContext";
 import { ChatProvider } from "@/lib/contexts/ChatContext";
 
+import AuthGuard from "@/components/layout/AuthGuard";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -33,11 +35,13 @@ export default function RootLayout({
       >
         <NetworkProvider>
           <UserProvider>
-            <OpponentProvider>
-              <ChatProvider>
-                {children}
-              </ChatProvider>
-            </OpponentProvider>
+            <AuthGuard>
+              <OpponentProvider>
+                <ChatProvider>
+                  {children}
+                </ChatProvider>
+              </OpponentProvider>
+            </AuthGuard>
           </UserProvider>
         </NetworkProvider>
       </body>

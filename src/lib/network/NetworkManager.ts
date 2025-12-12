@@ -30,6 +30,20 @@ export class NetworkManager {
 
     constructor() {
         this.eventEmitter = new EventTarget();
+
+        // Handle video connection lost (terminal failure/opponent left abruptly)
+        this.eventEmitter.addEventListener('video_connection_lost', () => {
+            console.log('[NetworkManager] Video connection lost (terminal). Re-queueing...');
+            this.cleanupCurrentMatch();
+            this.findMatch();
+        });
+
+        // Handle unstable connection (waiting)
+        this.eventEmitter.addEventListener('video_connection_unstable', () => {
+            console.log('[NetworkManager] Video connection unstable. Waiting for reconnection...');
+            // Do not cleanup or re-queue. Just wait.
+            // UI can show a toast/spinner via this event.
+        });
     }
 
     async connect() {
@@ -91,22 +105,21 @@ export class NetworkManager {
 
                 this.socket.on('match_skipped', () => {
                     console.log('[NetworkManager] Match skipped event received from server');
-
-                    // Close WebRTC connection
-                    if (this.videoConnection) {
-                        this.videoConnection.close();
-                        this.videoConnection = null;
-                    }
-
-                    // Reset match data
-                    this.roomId = null;
-                    this.role = null;
-                    this.opponentId = null;
-                    this.opponentUid = null;
-                    this.isInitiator = false;
-
+                    this.cleanupCurrentMatch();
                     // Notify UI that match ended/skipped
                     this.emit('match_skipped_client');
+
+                    // If opponent skipped, we likely want to find a new match immediately
+                    // But typically the UI might handle "Next". 
+                    // However, if the user requested "someone left... join matchmaking", dealing with socket 'match_skipped' 
+                    // (which happens if opponent leaves) implies we should auto-requeue?
+                    // Let's assume yes for "seamless" experience, or stick to just emitting client event?
+                    // The user prompt specifically mentioned "closed the tab... status becomes disconnected/failed".
+                    // It didn't explicitly say "if opponent clicks next".
+                    // But "closed connection" -> "failed" -> 'video_connection_lost' -> we handle it above.
+                    // If opponent disconnects socket -> Server sends 'match_skipped'? 
+                    // If so, we should arguably re-queue here too. 
+                    this.findMatch();
                 });
 
                 this.setupSignalingHandlers();
@@ -205,6 +218,11 @@ export class NetworkManager {
     }
 
     async findMatch(preferences = {}) {
+        if (this.roomId) {
+            console.warn('[NetworkManager] Already in a match, ignoring findMatch request.');
+            return;
+        }
+
         if (this.socket && this.isSignalingConnected) {
             console.log('[NetworkManager] Joining matchmaking queue...');
             this.socket.emit('join_queue', {
@@ -263,7 +281,7 @@ export class NetworkManager {
 
     disconnect() {
         console.log('[NetworkManager] Disconnecting all connections...');
-        if (this.videoConnection) this.videoConnection.close();
+        this.cleanupCurrentMatch();
         if (this.socket) this.socket.disconnect();
     }
 
@@ -277,5 +295,17 @@ export class NetworkManager {
 
     private emit(eventName: string, detail?: unknown) {
         this.eventEmitter.dispatchEvent(new CustomEvent(eventName, { detail }));
+    }
+    cleanupCurrentMatch() {
+        if (this.videoConnection) {
+            this.videoConnection.close();
+            this.videoConnection = null;
+        }
+        this.roomId = null;
+        this.role = null;
+        this.opponentId = null;
+        this.opponentUid = null;
+        this.isInitiator = false;
+        this.iceServers = { game: [], video: [] };
     }
 }

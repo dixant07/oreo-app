@@ -82,10 +82,17 @@ export default function VideoChatPage() {
             networkManager.on('game_invite', handleGameInvite)
         ];
 
-        // Initial check if already connected
-        if (networkManager.videoConnection?.localStream && localVideoRef.current) {
+        // Initial check if already connected or start local stream
+        if (networkManager.localStream && localVideoRef.current) {
+            localVideoRef.current.srcObject = networkManager.localStream;
+        } else if (networkManager.videoConnection?.localStream && localVideoRef.current) {
+            // Fallback to videoConnection if for some reason localStream isn't set but VC has it
             localVideoRef.current.srcObject = networkManager.videoConnection.localStream;
+        } else {
+            // Initiate local stream if not already
+            networkManager.startLocalStream().catch(console.error);
         }
+
         if (networkManager.videoConnection?.remoteStream && remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = networkManager.videoConnection.remoteStream;
             setStatus("Connected");
@@ -93,6 +100,16 @@ export default function VideoChatPage() {
 
         // Connect and find match on mount
         const initConnection = async () => {
+            // Hydrate if already in a match (e.g. from Internal Navigation)
+            if (networkManager.roomId && networkManager.opponentId) {
+                console.log("Already in match, resuming chat session...");
+                setStatus("Match Found!");
+                if (networkManager.videoConnection?.remoteStream) {
+                    setStatus("Connected");
+                }
+                return;
+            }
+
             if (!networkManager.socket?.connected) {
                 try {
                     await networkManager.connect();
@@ -100,6 +117,9 @@ export default function VideoChatPage() {
                 } catch (err) {
                     console.error("Failed to connect:", err);
                 }
+            } else {
+                // Connected but no match/room? Find one.
+                networkManager.findMatch({ mode: 'video' });
             }
         };
         initConnection();
@@ -281,7 +301,7 @@ export default function VideoChatPage() {
                     </div>
 
                     {/* Skip Button */}
-                    <div className="absolute bottom-6 right-6">
+                    <div className="absolute bottom-6 right-6 z-20">
                         <Button
                             onClick={handleSkip}
                             className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-6 py-6 font-bold text-lg shadow-lg flex items-center gap-2"
