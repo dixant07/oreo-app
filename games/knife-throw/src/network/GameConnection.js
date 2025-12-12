@@ -323,11 +323,7 @@ export class GameConnection {
             channel.send(data);
             return true;
         } else {
-            // Fallback to reliable if unreliable is not available
-            if (!reliable && this.dataChannels.reliable && this.dataChannels.reliable.readyState === 'open') {
-                this.dataChannels.reliable.send(data);
-                return true;
-            }
+            console.warn(`[GameConnection] Failed to send data: ${reliable ? 'Reliable' : 'Unreliable'} channel not ready.`);
             return false;
         }
     }

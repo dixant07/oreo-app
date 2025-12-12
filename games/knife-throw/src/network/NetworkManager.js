@@ -181,6 +181,18 @@ export class NetworkManager {
             console.error("[NetworkManager] Cannot connect to game: No match details found");
             return;
         }
+
+        // Ensure ICE servers are available before initializing
+        if ((!this.iceServers || !this.iceServers.game || this.iceServers.game.length === 0) && this.socket) {
+            console.log('[NetworkManager] No ICE servers available, waiting for config...');
+            try {
+                // Wait up to 5 seconds for ICE servers
+                await this.waitForIceServers(5000);
+            } catch (err) {
+                console.warn('[NetworkManager] Timeout waiting for ICE servers, proceeding with defaults (connection may fail in production)');
+            }
+        }
+
         await this.initializeGameConnection();
 
         // Process pending offer if any
@@ -189,6 +201,38 @@ export class NetworkManager {
             await this.gameConnection.handleOffer(this.pendingOffer);
             this.pendingOffer = null;
         }
+    }
+
+    /**
+     * Wait for ICE servers configuration
+     * @param {number} timeoutMs - Timeout in milliseconds
+     */
+    async waitForIceServers(timeoutMs = 5000) {
+        return new Promise((resolve, reject) => {
+            // Check if already available
+            if (this.iceServers && this.iceServers.game && this.iceServers.game.length > 0) {
+                resolve(this.iceServers);
+                return;
+            }
+
+            const timeout = setTimeout(() => {
+                this.socket.off('ice_servers_config', handler);
+                reject(new Error('Timeout waiting for ICE servers'));
+            }, timeoutMs);
+
+            const handler = (data) => {
+                clearTimeout(timeout);
+                // Listener already updates this.iceServers in setupSignalingHandlers
+                // but we need to wait for it to happen or do it here. 
+                // The existing listener runs first.
+                resolve(data.iceServers);
+            };
+
+            this.socket.once('ice_servers_config', handler);
+
+            // Re-request just in case
+            this.socket.emit('get_ice_servers');
+        });
     }
 
     /**
