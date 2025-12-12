@@ -130,6 +130,14 @@ export default class GameScene extends Phaser.Scene {
 
         // Start Game Loop logic
         this.resetBall();
+
+        // Cleanup on scene shutdown
+        this.events.on('shutdown', () => {
+            console.log('[GameScene] Shutting down, disconnecting network...');
+            if (this.network) {
+                this.network.disconnect();
+            }
+        });
     }
 
     createUI() {

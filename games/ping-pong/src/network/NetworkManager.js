@@ -138,7 +138,14 @@ export class NetworkManager {
      */
     async handleMatchFound(msg) {
         this.roomId = msg.roomId;
-        this.role = msg.role;
+        // Normalize Role: 'host' -> 'A', anything else -> 'B'
+        if (msg.role === 'host') {
+            this.role = 'A';
+        } else if (msg.role === 'guest' || msg.role === 'client') {
+            this.role = 'B';
+        } else {
+            this.role = msg.role; // specific 'A' or 'B' passed directly
+        }
         this.opponentId = msg.opponentId;
         this.opponentUid = msg.opponentUid; // Store opponentUid
         this.isInitiator = msg.isInitiator;
