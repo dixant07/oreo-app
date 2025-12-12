@@ -51,9 +51,13 @@ console.log('[Main] Match Data:', GameConfig.MATCH_DATA);
 
 const config = {
     type: Phaser.AUTO,
-    width: GameConfig.DISPLAY.WIDTH,
-    height: GameConfig.DISPLAY.HEIGHT,
-    parent: GameConfig.DISPLAY.PARENT,
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: GameConfig.DISPLAY.WIDTH,
+        height: GameConfig.DISPLAY.HEIGHT,
+        parent: GameConfig.DISPLAY.PARENT
+    },
     backgroundColor: GameConfig.DISPLAY.BACKGROUND_COLOR,
     physics: {
         default: 'arcade',

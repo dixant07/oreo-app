@@ -73,16 +73,38 @@ export default class MenuScene extends Phaser.Scene {
         });
 
         this.events.on('match_found', (msg) => {
-            statusText.setText('Match Found! Connecting...');
+            statusText.setText('Match Found! Initializing connection...');
 
             // Start connecting to game (WebRTC) immediately
             this.network.connectToGame();
 
-            this.time.delayedCall(GameConfig.UI.MATCH_START_DELAY, () => {
+            // Wait for data channel to be open before starting
+            const onGameReady = () => {
+                console.log('[MenuScene] Game connection ready, starting game...');
+
                 this.scene.start(TableTennisConfig.SCENES.GAME, {
                     network: this.network,
                     matchData: msg
                 });
+            };
+
+            // Progress listener
+            const onConnectionEstablished = () => {
+                statusText.setText('Connection established! Syncing...');
+            };
+
+            this.events.once('game_connection_established', onConnectionEstablished);
+            this.events.once('game_datachannel_open', onGameReady);
+
+            // Timeout safety
+            this.time.delayedCall(15000, () => {
+                // If we're still in this scene, the connection timed out
+                if (this.scene.isActive()) {
+                    console.error('[MenuScene] Connection timed out');
+                    statusText.setText('Connection timed out. Please refresh.');
+                    this.events.off('game_datachannel_open', onGameReady);
+                    this.events.off('game_connection_established', onConnectionEstablished);
+                }
             });
         });
 

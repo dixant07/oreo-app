@@ -271,8 +271,8 @@ export default class GameScene extends Phaser.Scene {
             this.checkBatCollision(this.batBState, -1, prevBallX, prevBallY, dt);
         }
 
-        // Bounds/Score - Only initiator acts as referee
-        if (this.isInitiator) {
+        // Bounds/Score - Only Role A (Host) acts as referee
+        if (this.role === 'A') {
             if (Math.abs(b.y) > GameConfig.GAME.COURT_Y_BOUNDARY) {
                 if (b.y > 0) {
                     this.handleScoreChange('B');
@@ -480,6 +480,7 @@ export default class GameScene extends Phaser.Scene {
             this.currentServer = 'B';
         }
         this.isServing = true;
+        this.scoreText.setText(`A: ${this.scoreA}  B: ${this.scoreB}`);
         this.resetBall();
 
         // Send Score Update
