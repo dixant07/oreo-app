@@ -30,10 +30,10 @@ export default function LoginPage() {
             if (!response.ok) {
                 throw new Error('Failed to sync user with backend');
             }
+            return await response.json();
         } catch (err) {
             console.error("Backend sync error:", err);
-            // We might want to show a warning but still allow login as Firestore listener will eventually pick it up
-            // or maybe fail hard. For now, log and proceed.
+            throw err;
         }
     };
 
@@ -44,9 +44,20 @@ export default function LoginPage() {
 
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            if (!userCredential.user.emailVerified) {
+                setError('Please verify your email address before logging in.');
+                setLoading(false);
+                return;
+            }
+
             const token = await userCredential.user.getIdToken();
-            await syncUserWithBackend(token);
-            router.push('/home');
+            const data = await syncUserWithBackend(token);
+
+            if (data.user && !data.user.isOnboarded) {
+                router.push('/onboarding');
+            } else {
+                router.push('/home');
+            }
         } catch (err: any) {
             setError(err.message || 'Failed to login');
         } finally {
@@ -61,8 +72,13 @@ export default function LoginPage() {
         try {
             const userCredential = await signInWithPopup(auth, googleProvider);
             const token = await userCredential.user.getIdToken();
-            await syncUserWithBackend(token);
-            router.push('/home');
+            const data = await syncUserWithBackend(token);
+
+            if (data.user && !data.user.isOnboarded) {
+                router.push('/onboarding');
+            } else {
+                router.push('/home');
+            }
         } catch (err: any) {
             setError(err.message || 'Failed to login with Google');
         } finally {

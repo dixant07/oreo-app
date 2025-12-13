@@ -3,6 +3,9 @@ import { db, admin, auth } from '@/lib/config/firebase-admin';
 import { verifyAuthToken, unauthorizedResponse } from '@/lib/middleware/auth';
 
 interface ProfileUpdateBody {
+    firstName?: string;
+    lastName?: string;
+    displayName?: string;
     gender?: string;
     location?: string;
     dob?: string;
@@ -10,6 +13,7 @@ interface ProfileUpdateBody {
     language?: string;
     interests?: string[];
     avatarUrl?: string;
+    isOnboarded?: boolean;
 }
 
 /**
@@ -26,13 +30,17 @@ export async function POST(request: NextRequest) {
     try {
         const { uid } = user;
         const body: ProfileUpdateBody = await request.json();
-        const { gender, location, dob, region, language, interests, avatarUrl } = body;
+        const { firstName, lastName, displayName, gender, location, dob, region, language, interests, avatarUrl, isOnboarded } = body;
 
         if (gender && !['male', 'female', 'other'].includes(gender)) {
             return NextResponse.json({ error: 'Invalid gender' }, { status: 400 });
         }
 
         const updateData: Record<string, unknown> = {};
+        if (firstName) updateData.firstName = firstName;
+        if (lastName) updateData.lastName = lastName;
+        if (displayName) updateData.displayName = displayName;
+        if (isOnboarded !== undefined) updateData.isOnboarded = isOnboarded;
         if (gender) updateData.gender = gender;
         if (location) updateData.location = location;
         if (dob) updateData.dob = dob;
@@ -65,6 +73,63 @@ export async function POST(request: NextRequest) {
         });
     } catch (error) {
         console.error('Error updating profile:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+/**
+ * GET /api/user/profile
+ * Fetch user profile
+ */
+export async function GET(request: NextRequest) {
+    const user = await verifyAuthToken(request);
+
+    if (!user) {
+        return unauthorizedResponse();
+    }
+
+    try {
+        const { uid } = user;
+        const userDoc = await db.collection('users').doc(uid).get();
+
+        if (!userDoc.exists) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({
+            user: { ...user, ...userDoc.data() }
+        });
+    } catch (error) {
+        console.error('Error fetching profile:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+/**
+ * DELETE /api/user/profile
+ * Delete user account permanently
+ */
+export async function DELETE(request: NextRequest) {
+    const user = await verifyAuthToken(request);
+
+    if (!user) {
+        return unauthorizedResponse();
+    }
+
+    try {
+        const { uid } = user;
+
+        // Delete from Firestore
+        await db.collection('users').doc(uid).delete();
+
+        // Delete from Firebase Auth
+        await auth.deleteUser(uid);
+
+        return NextResponse.json({
+            message: 'Account deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting account:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

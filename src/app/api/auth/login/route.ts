@@ -25,6 +25,9 @@ export async function POST(request: NextRequest) {
                 uid,
                 email,
                 name: name || '',
+                firstName: name ? name.split(' ')[0] : '',
+                lastName: name ? name.split(' ').slice(1).join(' ') : '',
+                displayName: name || '',
                 picture: picture || '',
                 dob: null,
                 region: 'unknown',
@@ -33,6 +36,7 @@ export async function POST(request: NextRequest) {
                 interests: [],
                 avatarUrl: picture || '',
                 isOnline: true,
+                isOnboarded: false,
                 lastActive: admin.firestore.FieldValue.serverTimestamp(),
                 counters: {
                     unreadNotifs: 0,

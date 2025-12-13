@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { games, categories } from '@/app/(main)/games/data';
+import { games, categories } from '@/app/(main)/game-catalog/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Play, Lock, MessageSquarePlus, X, Send, Loader2, Users } from 'lucide-react';

@@ -2,22 +2,24 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, sendEmailVerification } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/config/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MailCheck } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SignupPage() {
     const router = useRouter();
-    const [name, setName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [emailSent, setEmailSent] = useState(false);
 
     const syncUserWithBackend = async (token: string) => {
         try {
@@ -31,6 +33,7 @@ export default function SignupPage() {
             if (!response.ok) {
                 throw new Error('Failed to sync user with backend');
             }
+            return await response.json();
         } catch (err) {
             console.error("Backend sync error:", err);
         }
@@ -45,13 +48,18 @@ export default function SignupPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
             // Update display name
+            const displayName = `${firstName} ${lastName}`.trim();
             await updateProfile(userCredential.user, {
-                displayName: name
+                displayName: displayName
             });
 
-            const token = await userCredential.user.getIdToken();
-            await syncUserWithBackend(token);
-            router.push('/onboarding');
+            // Send Verification Email
+            await sendEmailVerification(userCredential.user);
+            setEmailSent(true);
+
+            // We do NOT call syncUserWithBackend here yet. 
+            // We wait for them to verify and log in.
+
         } catch (err: any) {
             setError(err.message || 'Failed to create account');
         } finally {
@@ -66,8 +74,13 @@ export default function SignupPage() {
         try {
             const userCredential = await signInWithPopup(auth, googleProvider);
             const token = await userCredential.user.getIdToken();
-            await syncUserWithBackend(token);
-            router.push('/onboarding');
+            const data = await syncUserWithBackend(token);
+
+            if (data?.user && !data.user.isOnboarded) {
+                router.push('/onboarding');
+            } else {
+                router.push('/home');
+            }
         } catch (err: any) {
             setError(err.message || 'Failed to login with Google');
         } finally {
@@ -75,13 +88,42 @@ export default function SignupPage() {
         }
     };
 
+    if (emailSent) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+                <Card className="w-full max-w-md shadow-xl text-center">
+                    <CardHeader>
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-orange-100">
+                            <MailCheck className="h-6 w-6 text-orange-600" />
+                        </div>
+                        <CardTitle className="mt-4 text-xl font-semibold text-gray-900">Check your email</CardTitle>
+                        <CardDescription className="mt-2">
+                            We&apos;ve sent a verification link to <span className="font-medium text-orange-600">{email}</span>. Please verify your email to continue.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-sm text-gray-500">
+                            Once you have verified your email, click the button below to log in.
+                        </p>
+                        <Button
+                            className="w-full bg-orange-500 hover:bg-orange-600"
+                            onClick={() => router.push('/login')}
+                        >
+                            Proceed to Login
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
             <Card className="w-full max-w-md shadow-xl">
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-2xl font-bold text-center text-orange-600">Create an account</CardTitle>
                     <CardDescription className="text-center">
-                        Enter your email below to create your account
+                        Enter your details below to create your account
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -91,16 +133,29 @@ export default function SignupPage() {
                         </div>
                     )}
                     <form onSubmit={handleSignup} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Name</Label>
-                            <Input
-                                id="name"
-                                type="text"
-                                placeholder="John Doe"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                required
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="firstName">First Name</Label>
+                                <Input
+                                    id="firstName"
+                                    type="text"
+                                    placeholder="John"
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="lastName">Last Name</Label>
+                                <Input
+                                    id="lastName"
+                                    type="text"
+                                    placeholder="Doe"
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
+                                    required
+                                />
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>

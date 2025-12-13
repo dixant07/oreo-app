@@ -81,7 +81,7 @@ export function MembershipDialog({ open, onOpenChange }: MembershipDialogProps) 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl rounded-3xl p-0 overflow-hidden border-0">
+            <DialogContent className="!max-w-4xl w-full rounded-3xl p-0 overflow-hidden border-0">
                 <div className="bg-gradient-to-br from-[#FFF8F0] to-orange-50 p-6">
                     <DialogHeader className="mb-6">
                         <DialogTitle className="text-2xl font-bold text-center text-gray-900">

@@ -16,8 +16,10 @@ import {
     Users,
     Gamepad2,
     X,
-    MessageCircle
+    MessageCircle // Keep existing imports
 } from 'lucide-react';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/config/firebase';
 import ChatPage from '@/app/(main)/chat/page';
 import { IncomingCallDialog } from '@/components/dialogs/IncomingCallDialog';
 import { ConnectionStatusDialog, ConnectionStatus } from '@/components/dialogs/ConnectionStatusDialog';
@@ -138,6 +140,15 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
         setOutgoingStatus('idle');
         setRecipientInfo(null);
         setIncomingCall(null);
+    };
+
+    const handleLogout = async () => {
+        try {
+            await signOut(auth);
+            router.push('/');
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
     };
 
     const handleFindMatch = async () => {
@@ -535,12 +546,7 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
                                 <CreditCard className="mr-2 h-4 w-4" />
                                 <span>Membership</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/settings')} className="rounded-lg cursor-pointer">
-                                <Settings className="mr-2 h-4 w-4" />
-                                <span>Settings</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="rounded-lg cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
+                            <DropdownMenuItem onClick={handleLogout} className="rounded-lg cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
                                 <LogOut className="mr-2 h-4 w-4" />
                                 <span>Log out</span>
                             </DropdownMenuItem>

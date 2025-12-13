@@ -8,6 +8,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 export interface OpponentProfile {
     uid: string;
     name: string;
+    displayName?: string;
     avatarUrl: string;
     isOnline: boolean;
 }

@@ -270,7 +270,7 @@ export default function VideoChatPage() {
 
                     {/* User Info Overlay */}
                     <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-left">
-                        <p className="font-bold text-sm leading-none">{opponent?.name || "Opponent"}</p>
+                        <p className="font-bold text-sm leading-none">{opponent?.displayName || opponent?.name || "Opponent"}</p>
                         <p className="opacity-80 text-[10px] leading-none mt-0.5">{status === "Connected" ? "Online" : status}</p>
                     </div>
 
@@ -355,7 +355,7 @@ export default function VideoChatPage() {
                             <UserIcon className="w-5 h-5 text-orange-500 translate-y-0.5" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-gray-900 text-sm leading-tight">{opponent?.name || "Opponent"}</h3>
+                            <h3 className="font-bold text-gray-900 text-sm leading-tight">{opponent?.displayName || opponent?.name || "Opponent"}</h3>
                             <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider">{status === "Connected" ? "Online" : status}</p>
                         </div>
                     </div>

@@ -451,7 +451,7 @@ function VideoGameContent() {
 
                         {/* Opponent Info */}
                         <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-left">
-                            <p className="font-bold text-sm leading-none">{opponent?.name || "Opponent"}</p>
+                            <p className="font-bold text-sm leading-none">{opponent?.displayName || opponent?.name || "Opponent"}</p>
                             <p className="opacity-80 text-[10px] leading-none mt-0.5">{status === "Connected" ? "Online" : status}</p>
                         </div>
 
