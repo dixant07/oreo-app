@@ -307,11 +307,11 @@ function VideoGameContent() {
             <TopBar mode={mode} onModeChange={handleModeToggle} />
 
             {/* Main Content */}
-            <main className="flex-1 flex p-6 gap-6 overflow-hidden">
+            <main className="flex-1 flex p-2 gap-2 overflow-hidden">
 
                 {/* Left: Game Area (Larger) */}
                 {/* Left: Game Area (Larger) */}
-                <Card className="flex-[2] rounded-[2.5rem] overflow-hidden border-0 shadow-2xl bg-white relative flex flex-col h-full ring-1 ring-gray-100">
+                <Card className="flex-[2] rounded-[1rem] overflow-hidden border-0 shadow-2xl bg-white relative flex flex-col h-full ring-1 ring-gray-100 p-0">
 
                     {/* Close Game Button */}
                     {showGame && (
@@ -421,10 +421,10 @@ function VideoGameContent() {
                 </Card>
 
                 {/* Right: Video Area */}
-                <div className="flex-1 flex flex-col gap-6 min-w-[320px]">
+                <div className="flex-1 flex flex-col gap-2 min-w-[320px]">
 
                     {/* Remote Video (Top Half) */}
-                    <Card className="flex-1 rounded-[2.5rem] overflow-hidden border-0 shadow-xl bg-[#EAE8D9] relative group">
+                    <Card className="flex-1 rounded-[1rem] overflow-hidden border-0 shadow-xl bg-[#EAE8D9] relative group p-0">
                         <video
                             ref={remoteVideoRef}
                             autoPlay
@@ -432,49 +432,49 @@ function VideoGameContent() {
                             className="w-full h-full object-cover"
                         />
 
-                        {/* Opponent Info & Actions */}
-                        <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-                            <div className="bg-black/20 backdrop-blur-md text-white px-4 py-2 rounded-2xl">
-                                <p className="font-bold text-sm">{opponent?.name || "Opponent"}</p>
-                                <p className="opacity-80 text-xs">{status === "Connected" ? "Online" : status}</p>
-                            </div>
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <Button
-                                    size="icon"
-                                    variant="secondary"
-                                    className="h-9 w-9 rounded-full bg-white/20 backdrop-blur hover:bg-white/40 text-white border-0"
-                                    onClick={async () => {
-                                        if (networkManager?.opponentUid) {
-                                            try {
-                                                const user = auth.currentUser;
-                                                const token = await user?.getIdToken();
-                                                await fetch('/api/friends/request', {
-                                                    method: 'POST',
-                                                    headers: {
-                                                        'Content-Type': 'application/json',
-                                                        'Authorization': `Bearer ${token}`
-                                                    },
-                                                    body: JSON.stringify({ toUid: networkManager.opponentUid })
-                                                });
-                                                alert("Friend request sent!");
-                                            } catch (e) {
-                                                console.error(e);
-                                                alert("Failed to send friend request");
-                                            }
+                        {/* Opponent Info */}
+                        <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-left">
+                            <p className="font-bold text-sm leading-none">{opponent?.name || "Opponent"}</p>
+                            <p className="opacity-80 text-[10px] leading-none mt-0.5">{status === "Connected" ? "Online" : status}</p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="absolute top-4 right-4 flex gap-2">
+                            <Button
+                                size="icon"
+                                variant="secondary"
+                                className="h-8 w-8 rounded-full bg-blue-500/40 backdrop-blur hover:bg-blue-600/60 text-white border-0 transition-colors"
+                                onClick={async () => {
+                                    if (networkManager?.opponentUid) {
+                                        try {
+                                            const user = auth.currentUser;
+                                            const token = await user?.getIdToken();
+                                            await fetch('/api/friends/request', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': `Bearer ${token}`
+                                                },
+                                                body: JSON.stringify({ toUid: networkManager.opponentUid })
+                                            });
+                                            alert("Friend request sent!");
+                                        } catch (e) {
+                                            console.error(e);
+                                            alert("Failed to send friend request");
                                         }
-                                    }}
-                                >
-                                    <UserPlus className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                    size="icon"
-                                    variant="secondary"
-                                    className="h-9 w-9 rounded-full bg-white/20 backdrop-blur hover:bg-red-500/40 text-white border-0"
-                                    onClick={() => setShowReportModal(true)}
-                                >
-                                    <Flag className="w-4 h-4" />
-                                </Button>
-                            </div>
+                                    }
+                                }}
+                            >
+                                <UserPlus className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                size="icon"
+                                variant="secondary"
+                                className="h-8 w-8 rounded-full bg-red-500/40 backdrop-blur hover:bg-red-600/60 text-white border-0 transition-colors"
+                                onClick={() => setShowReportModal(true)}
+                            >
+                                <Flag className="w-4 h-4" />
+                            </Button>
                         </div>
 
 
@@ -485,11 +485,11 @@ function VideoGameContent() {
                         <div className="absolute bottom-4 right-4 z-20">
                             <Button
                                 onClick={handleSkip}
-                                className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-6 py-6 font-bold text-lg shadow-lg flex items-center gap-2 transition-transform hover:scale-105"
+                                className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-5 py-2.5 font-bold text-sm shadow-lg flex items-center gap-1.5 transition-transform hover:scale-105"
                             >
                                 <div className="flex -space-x-1">
-                                    <SkipForward className="w-5 h-5 fill-current" />
-                                    <SkipForward className="w-5 h-5 fill-current" />
+                                    <SkipForward className="w-4 h-4 fill-current" />
+                                    <SkipForward className="w-4 h-4 fill-current" />
                                 </div>
                                 Skip
                             </Button>
@@ -509,7 +509,7 @@ function VideoGameContent() {
                     </Card>
 
                     {/* Local Video (Bottom Half) with Chat Overlay */}
-                    <Card className="flex-1 rounded-[2.5rem] overflow-hidden border-0 shadow-xl bg-gray-200 relative group/local">
+                    <Card className="flex-1 rounded-[1rem] overflow-hidden border-0 shadow-xl bg-gray-200 relative group/local p-0">
                         <video
                             ref={localVideoRef}
                             autoPlay
@@ -519,12 +519,12 @@ function VideoGameContent() {
                         />
 
                         {/* Status Badge (Moved to top-left) */}
-                        <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm text-white px-4 py-1.5 rounded-xl text-xs font-bold z-10">
+                        <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-bold z-10">
                             You
                         </div>
 
                         {/* Floating Messages Overlay */}
-                        <div className="absolute bottom-20 left-4 right-4 flex flex-col justify-end pointer-events-none gap-2 z-10 min-h-[120px]">
+                        <div className="absolute bottom-4 left-4 right-4 flex flex-col justify-end pointer-events-none gap-2 z-10 min-h-[120px]">
                             <style jsx>{`
                                 @keyframes floatFade {
                                     0% { opacity: 0; transform: translateY(20px); }
@@ -538,36 +538,35 @@ function VideoGameContent() {
                             `}</style>
                             {messages.filter(m => m.timestamp > mountTime).slice(-4).map((msg) => (
                                 <div key={msg.id || Math.random()} className="msg-anim flex flex-col w-full">
-                                    <div className={`backdrop-blur-md rounded-2xl px-4 py-2 text-sm text-white shadow-sm max-w-[85%] break-words ${msg.isLocal
-                                        ? 'bg-white/20 self-end rounded-br-none border border-white/20'
-                                        : 'bg-black/40 self-start rounded-bl-none border border-white/10'
+                                    <div className={`backdrop-blur-md rounded-2xl px-4 py-2 text-sm text-white shadow-sm max-w-[85%] break-words bg-black/50 border border-white/10 ${msg.isLocal
+                                        ? 'self-end rounded-br-sm'
+                                        : 'self-start rounded-bl-sm'
                                         }`}>
-                                        <span className="font-bold text-[10px] opacity-75 block mb-0.5 uppercase tracking-wider">{msg.isLocal ? 'You' : opponent?.name || 'Opponent'}</span>
                                         {msg.text}
                                     </div>
                                 </div>
                             ))}
                         </div>
-
-                        {/* Translucent Input Bar */}
-                        <div className="absolute bottom-4 left-4 right-4 z-20">
-                            <form onSubmit={handleSendMessage} className="flex gap-2 items-center bg-black/40 backdrop-blur-md p-1.5 rounded-full border border-white/10 shadow-lg transition-all focus-within:bg-black/60 focus-within:border-white/30 focus-within:shadow-xl">
-                                <input
-                                    className="flex-1 bg-transparent border-none text-white text-sm placeholder-white/60 px-4 py-1 focus:outline-none focus:ring-0"
-                                    placeholder="Type a message..."
-                                    value={inputText}
-                                    onChange={(e) => setInputText(e.target.value)}
-                                />
-                                <Button
-                                    type="submit"
-                                    size="icon"
-                                    className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 text-white border-0 transition-all shadow-md hover:scale-105 shrink-0"
-                                >
-                                    <Send className="w-4 h-4 ml-0.5" />
-                                </Button>
-                            </form>
-                        </div>
                     </Card>
+
+                    {/* Input Bar (Below Video) */}
+                    <div className="w-full">
+                        <form onSubmit={handleSendMessage} className="flex gap-2 items-center bg-white p-1.5 rounded-[1rem] border border-gray-200 shadow-sm transition-all focus-within:ring-2 focus-within:ring-orange-500/20">
+                            <input
+                                className="flex-1 bg-transparent border-none text-gray-900 text-sm placeholder-gray-500 px-4 py-1 focus:outline-none focus:ring-0"
+                                placeholder="Type a message..."
+                                value={inputText}
+                                onChange={(e) => setInputText(e.target.value)}
+                            />
+                            <Button
+                                type="submit"
+                                size="icon"
+                                className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 text-white border-0 transition-all shadow-md hover:scale-105 shrink-0"
+                            >
+                                <Send className="w-4 h-4 ml-0.5" />
+                            </Button>
+                        </form>
+                    </div>
 
                 </div>
             </main>

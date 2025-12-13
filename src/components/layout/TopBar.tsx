@@ -217,25 +217,25 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
 
     return (
         <>
-            <header className="flex h-20 items-center justify-between px-8 border-b border-gray-200 bg-white/50 backdrop-blur-sm">
+            <header className="sticky top-0 z-50 flex h-16 w-full items-center justify-between px-6 border-b border-gray-200 bg-white/80 backdrop-blur-md">
                 {/* Left: Logo */}
-                <div className="bg-orange-500 text-black font-bold text-xl px-6 py-2 rounded-full shadow-md">
+                <div className="bg-orange-500 text-black font-bold text-lg px-5 py-1.5 rounded-full shadow-md">
                     Oreo
                 </div>
 
                 {/* Middle: Toggle & Preference */}
                 {showToggle && (
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4">
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
                         <div className="bg-white p-1 rounded-full flex shadow-sm border border-gray-100">
                             <button
                                 onClick={() => onModeChange('game')}
-                                className={`px-8 py-2 rounded-full text-sm font-bold transition-all ${mode === 'game' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                className={`px-6 py-1.5 rounded-full text-sm font-bold transition-all ${mode === 'game' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
                             >
                                 Game
                             </button>
                             <button
                                 onClick={() => onModeChange('video')}
-                                className={`px-8 py-2 rounded-full text-sm font-bold transition-all ${mode === 'video' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                className={`px-6 py-1.5 rounded-full text-sm font-bold transition-all ${mode === 'video' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
                             >
                                 Video
                             </button>
@@ -243,7 +243,7 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
 
                         <Dialog open={isPreferenceOpen} onOpenChange={setIsPreferenceOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="ghost" className="bg-white hover:bg-gray-50 text-black font-bold rounded-full px-4 py-2 h-auto shadow-sm border border-gray-100 gap-2">
+                                <Button variant="ghost" className="bg-white hover:bg-gray-50 text-black font-bold rounded-full px-3 py-1.5 h-auto shadow-sm border border-gray-100 gap-1.5">
                                     <Settings className="w-4 h-4" />
                                     <span>Preference</span>
                                 </Button>
@@ -314,7 +314,7 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
                 )}
 
                 {/* Right: User Panel */}
-                <div className="flex items-center gap-4 ml-auto">
+                <div className="flex items-center gap-2 ml-auto">
                     {/* Tier Badge - Clickable to open membership dialog */}
                     <button
                         onClick={() => setIsMembershipOpen(true)}
@@ -334,7 +334,7 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
                             setIsChatOpen(true);
                         }}
                     >
-                        <MessageSquare className="w-5 h-5" />
+                        <MessageSquare className="w-6 h-6" />
                         {unreadCount > 0 && (
                             <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -347,7 +347,7 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="ghost" size="icon" className="text-gray-500 hover:bg-orange-50 rounded-full relative">
-                                <Users className="w-5 h-5" />
+                                <Users className="w-6 h-6" />
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-64 p-4 rounded-2xl shadow-xl border-0">
@@ -400,7 +400,7 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="ghost" size="icon" className="text-gray-500 hover:bg-orange-50 rounded-full relative">
-                                <Bell className="w-5 h-5" />
+                                <Bell className="w-6 h-6" />
                                 {friendRequests.length > 0 && (
                                     <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
                                 )}

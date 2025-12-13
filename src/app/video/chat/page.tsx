@@ -20,6 +20,7 @@ import { useCurrentOpponent } from '@/lib/contexts/OpponentContext';
 import { ReportModal } from '@/components/dialogs/ReportModal';
 import { auth } from '@/lib/config/firebase';
 import { useChat } from '@/lib/contexts/ChatContext';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function VideoChatPage() {
     const { networkManager } = useNetwork();
@@ -192,10 +193,10 @@ export default function VideoChatPage() {
             <TopBar mode={mode} onModeChange={handleModeToggle} />
 
             {/* Main Content */}
-            <main className="flex-1 flex p-6 gap-6 overflow-hidden">
+            <main className="flex-1 flex p-2 gap-2 overflow-hidden">
 
                 {/* Left: Local Video */}
-                <Card className="flex-1 rounded-[2rem] overflow-hidden bg-[#D1D5DB] relative border-0 shadow-none">
+                <Card className="flex-1 rounded-[1rem] overflow-hidden bg-[#D1D5DB] relative border-0 shadow-none p-0">
                     <video
                         ref={localVideoRef}
                         autoPlay
@@ -203,13 +204,13 @@ export default function VideoChatPage() {
                         muted
                         className="w-full h-full object-cover"
                     />
-                    <div className="absolute bottom-4 left-4 bg-black/50 text-white px-3 py-1 rounded-lg text-xs font-medium">
+                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-medium">
                         You
                     </div>
                 </Card>
 
                 {/* Middle: Remote Video */}
-                <Card className="flex-1 rounded-[2rem] overflow-hidden bg-[#EAE8D9] relative border-0 shadow-none group">
+                <Card className="flex-1 rounded-[1rem] overflow-hidden bg-[#EAE8D9] relative border-0 shadow-none group p-0">
                     <video
                         ref={remoteVideoRef}
                         autoPlay
@@ -256,58 +257,59 @@ export default function VideoChatPage() {
                     )}
 
                     {/* User Info Overlay */}
-                    <div className="absolute top-6 left-6 right-6 flex justify-between">
-                        <div className="bg-black/20 backdrop-blur-md text-white px-4 py-2 rounded-xl">
-                            <p className="font-bold text-sm">{opponent?.name || "Opponent"}</p>
-                            <p className="opacity-80 text-xs">{status === "Connected" ? "Online" : status}</p>
-                        </div>
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <Button
-                                size="icon"
-                                variant="secondary"
-                                className="h-9 w-9 rounded-full bg-white/20 backdrop-blur hover:bg-white/40 text-white border-0"
-                                onClick={async () => {
-                                    if (networkManager?.opponentUid) {
-                                        try {
-                                            const user = auth.currentUser;
-                                            const token = await user?.getIdToken();
-                                            await fetch('/api/friends/request', {
-                                                method: 'POST',
-                                                headers: {
-                                                    'Content-Type': 'application/json',
-                                                    'Authorization': `Bearer ${token}`
-                                                },
-                                                body: JSON.stringify({ toUid: networkManager.opponentUid })
-                                            });
-                                            alert("Friend request sent!");
-                                        } catch (e) {
-                                            console.error(e);
-                                            alert("Failed to send friend request");
-                                        }
+                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-left">
+                        <p className="font-bold text-sm leading-none">{opponent?.name || "Opponent"}</p>
+                        <p className="opacity-80 text-[10px] leading-none mt-0.5">{status === "Connected" ? "Online" : status}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="absolute top-4 right-4 flex gap-2">
+                        <Button
+                            size="icon"
+                            variant="secondary"
+                            className="h-8 w-8 rounded-full bg-blue-500/40 backdrop-blur hover:bg-blue-600/60 text-white border-0 transition-colors"
+                            onClick={async () => {
+                                if (networkManager?.opponentUid) {
+                                    try {
+                                        const user = auth.currentUser;
+                                        const token = await user?.getIdToken();
+                                        await fetch('/api/friends/request', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'Authorization': `Bearer ${token}`
+                                            },
+                                            body: JSON.stringify({ toUid: networkManager.opponentUid })
+                                        });
+                                        alert("Friend request sent!");
+                                    } catch (e) {
+                                        console.error(e);
+                                        alert("Failed to send friend request");
                                     }
-                                }}
-                            >
-                                <UserPlus className="w-4 h-4" />
-                            </Button>
-                            <Button
-                                size="icon"
-                                variant="secondary"
-                                className="h-9 w-9 rounded-full bg-white/20 backdrop-blur hover:bg-red-500/40 text-white border-0"
-                                onClick={() => setShowReportModal(true)}
-                            >
-                                <Flag className="w-4 h-4" />
-                            </Button>
-                        </div>
+                                }
+                            }}
+                        >
+                            <UserPlus className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            size="icon"
+                            variant="secondary"
+                            className="h-8 w-8 rounded-full bg-red-500/40 backdrop-blur hover:bg-red-600/60 text-white border-0 transition-colors"
+                            onClick={() => setShowReportModal(true)}
+                        >
+                            <Flag className="w-4 h-4" />
+                        </Button>
                     </div>
 
                     {/* Skip Button */}
-                    <div className="absolute bottom-6 right-6 z-20">
+                    <div className="absolute bottom-4 right-4 z-20">
                         <Button
                             onClick={handleSkip}
-                            className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-6 py-6 font-bold text-lg shadow-lg flex items-center gap-2"
+                            className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-5 py-2.5 font-bold text-sm shadow-lg flex items-center gap-1.5 transition-transform hover:scale-105"
                         >
                             <div className="flex -space-x-1">
-                                <SkipForward className="w-6 h-6 fill-current" />
+                                <SkipForward className="w-4 h-4 fill-current" />
+                                <SkipForward className="w-4 h-4 fill-current" />
                             </div>
                             Skip
                         </Button>
@@ -322,25 +324,27 @@ export default function VideoChatPage() {
                 </Card>
 
                 {/* Right: Chat */}
-                <Card className="w-96 flex flex-col rounded-[2rem] bg-white border-0 shadow-sm overflow-hidden">
+                {/* Right: Chat */}
+                {/* Right: Chat */}
+                <Card className="w-80 flex flex-col rounded-[1rem] bg-white border-0 shadow-sm overflow-hidden p-0 gap-0">
                     {/* Chat Header */}
-                    <div className="p-6 border-b border-gray-100 flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden">
-                            <UserIcon className="w-8 h-8 text-orange-500 translate-y-1" />
+                    <div className="p-2 border-b border-gray-100 flex items-center gap-3 bg-gray-50/50">
+                        <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">
+                            <UserIcon className="w-5 h-5 text-orange-500 translate-y-0.5" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-gray-900">{opponent?.name || "Opponent"}</h3>
-                            <p className="text-xs text-green-500 font-medium">{status === "Connected" ? "Online" : status}</p>
+                            <h3 className="font-bold text-gray-900 text-sm leading-tight">{opponent?.name || "Opponent"}</h3>
+                            <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider">{status === "Connected" ? "Online" : status}</p>
                         </div>
                     </div>
 
                     {/* Chat Messages */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-white scrollbar-thin scrollbar-thumb-gray-200">
                         {messages.map((msg, i) => (
                             <div key={i} className={`flex ${msg.isLocal ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`rounded-2xl px-4 py-3 max-w-[85%] text-sm ${msg.isLocal
-                                    ? 'bg-pink-100 text-gray-800 rounded-tr-none'
-                                    : 'bg-gray-100 text-gray-800 rounded-tl-none'
+                                <div className={`rounded-2xl px-3 py-2 max-w-[85%] text-xs font-medium leading-relaxed shadow-sm ${msg.isLocal
+                                    ? 'bg-orange-500 text-white rounded-tr-none'
+                                    : 'bg-gray-100 text-gray-700 rounded-tl-none'
                                     }`}>
                                     {msg.text}
                                 </div>
@@ -350,19 +354,39 @@ export default function VideoChatPage() {
                     </div>
 
                     {/* Chat Input */}
-                    <div className="p-4 border-t border-gray-50">
-                        <form onSubmit={handleSendMessage} className="flex items-center gap-2 bg-white border border-gray-200 rounded-full px-2 py-2 shadow-sm focus-within:ring-2 focus-within:ring-orange-100 transition-all">
+                    <div className="p-2 bg-white border-t border-gray-100">
+                        <form onSubmit={handleSendMessage} className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-full px-1.5 py-1.5 focus-within:ring-2 focus-within:ring-orange-500/20 focus-within:border-orange-500/50 transition-all shadow-sm">
+
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-full shrink-0 transition-colors">
+                                        <Smile className="w-5 h-5" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-1.5 rounded-xl border-gray-200 shadow-xl" side="top" align="start" sideOffset={10}>
+                                    <div className="flex gap-1">
+                                        {['😂', '❤️', '👍', '🔥', '😭', '😮'].map(emoji => (
+                                            <button
+                                                key={emoji}
+                                                type="button"
+                                                className="hover:bg-orange-50 hover:scale-110 p-2 rounded-lg text-xl transition-all duration-200 cursor-pointer"
+                                                onClick={() => setInputText(prev => prev + emoji)}
+                                            >
+                                                {emoji}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+
                             <Input
                                 value={inputText}
                                 onChange={e => setInputText(e.target.value)}
-                                placeholder="Type your message..."
-                                className="border-0 focus-visible:ring-0 shadow-none bg-transparent h-10 px-4"
+                                placeholder="Type..."
+                                className="border-0 focus-visible:ring-0 shadow-none bg-transparent h-8 px-2 text-sm min-w-0 placeholder:text-gray-400"
                             />
-                            <Button type="button" variant="ghost" size="icon" className="text-gray-400 hover:text-gray-600 rounded-full">
-                                <Smile className="w-5 h-5" />
-                            </Button>
-                            <Button type="submit" size="icon" className="bg-red-500 hover:bg-red-600 text-white rounded-full h-10 w-10 shadow-md">
-                                <Send className="w-4 h-4 ml-0.5" />
+                            <Button type="submit" size="icon" className="bg-orange-500 hover:bg-orange-600 text-white rounded-full h-8 w-8 shadow-sm shrink-0 transition-transform hover:scale-105">
+                                <Send className="w-3.5 h-3.5 ml-0.5" />
                             </Button>
                         </form>
                     </div>
