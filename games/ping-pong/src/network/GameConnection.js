@@ -31,7 +31,7 @@ export class GameConnection {
         console.log('[GameConnection] Initializing WebRTC...');
         console.log(`Initiator: ${this.isInitiator}, Opponent: ${this.opponentId}, UID: ${this.opponentUid}`);
 
-        // Validate ICE servers and determine transport policy
+        // Validate ICE servers
         const validatedIceServers = this.validateIceServers(this.iceServers);
         const hasTurnServer = validatedIceServers.some(server =>
             server.urls && (server.urls.startsWith('turn:') || server.urls.startsWith('turns:'))
@@ -40,13 +40,12 @@ export class GameConnection {
         console.log('[GameConnection] ICE Server Configuration:');
         console.log('  - Servers:', JSON.stringify(validatedIceServers, null, 2));
         console.log('  - Has TURN server:', hasTurnServer);
-        console.log('  - Transport policy:', hasTurnServer ? 'relay' : 'all');
+        console.log('  - Transport policy: all (prefer STUN/Direct, fallback to TURN)');
 
         const rtcConfig = {
             iceServers: validatedIceServers,
-            // Use 'relay' only if we have valid TURN servers configured
-            // Otherwise use 'all' to allow direct connections (useful for local testing)
-            iceTransportPolicy: hasTurnServer ? 'relay' : 'all'
+            // Use 'all' to allow STUN/Direct connections and fallback to TURN if needed
+            iceTransportPolicy: 'all'
         };
 
         this.peerConnection = new RTCPeerConnection(rtcConfig);
