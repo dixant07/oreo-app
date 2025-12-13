@@ -7,6 +7,7 @@ import { OpponentProvider } from "@/lib/contexts/OpponentContext";
 import { ChatProvider } from "@/lib/contexts/ChatContext";
 
 import AuthGuard from "@/components/layout/AuthGuard";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,6 +40,7 @@ export default function RootLayout({
               <OpponentProvider>
                 <ChatProvider>
                   {children}
+                  <Toaster />
                 </ChatProvider>
               </OpponentProvider>
             </AuthGuard>

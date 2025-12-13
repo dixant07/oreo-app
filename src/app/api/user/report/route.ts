@@ -42,10 +42,11 @@ export async function POST(request: NextRequest) {
         await db.runTransaction(async (transaction) => {
             const userDoc = await transaction.get(targetUserRef);
             if (!userDoc.exists) {
-                throw new Error("User not found");
+                // throw new Error("User not found");
+                // Allow reporting even if user doc is missing (rare case), but usually strict
             }
 
-            const userData = userDoc.data();
+            const userData = userDoc.exists ? userDoc.data() : {};
             const currentReportCount = userData?.reportCount || {};
 
             const fieldPath = `reportCount.${type}`;
@@ -63,10 +64,33 @@ export async function POST(request: NextRequest) {
                 status: 'pending'
             });
 
-            transaction.update(targetUserRef, {
-                [fieldPath]: admin.firestore.FieldValue.increment(1)
-            });
+            if (userDoc.exists) {
+                transaction.update(targetUserRef, {
+                    [fieldPath]: admin.firestore.FieldValue.increment(1)
+                });
+            }
         });
+
+        // ACTION: Remove relationships (Friends & Chat) as requested
+        const batch = db.batch();
+
+        // 1. Remove friend connections
+        const myFriendRef = db.collection('users').doc(uid).collection('friends').doc(targetUid);
+        const theirFriendRef = db.collection('users').doc(targetUid).collection('friends').doc(uid);
+        batch.delete(myFriendRef);
+        batch.delete(theirFriendRef);
+
+        // 2. Delete Conversation References (Hide chat)
+        const uids = [uid, targetUid].sort();
+        const chatId = `${uids[0]}_${uids[1]}`;
+
+        const myConvRef = db.collection('users').doc(uid).collection('conversations').doc(chatId);
+        const theirConvRef = db.collection('users').doc(targetUid).collection('conversations').doc(chatId);
+
+        batch.delete(myConvRef);
+        batch.delete(theirConvRef);
+
+        await batch.commit();
 
         // Determine action based on report severity
         const severeTypes = ["Nudity", "Crime", "Fraud"];

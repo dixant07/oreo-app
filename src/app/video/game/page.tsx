@@ -23,6 +23,7 @@ import { ReportModal } from '@/components/dialogs/ReportModal';
 import { auth } from '@/lib/config/firebase';
 import { MessageCircle } from 'lucide-react';
 import { useChat } from '@/lib/contexts/ChatContext';
+import { AlertModal } from '@/components/ui/alert-modal';
 
 export default function VideoGamePage() {
     return (
@@ -56,6 +57,17 @@ function VideoGameContent() {
     const [outgoingInvite, setOutgoingInvite] = useState<{ gameId: string } | null>(null);
     const [showReportModal, setShowReportModal] = useState(false);
     const [inputText, setInputText] = useState("");
+    const [alertState, setAlertState] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'success' | 'error' | 'info';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
 
     const { opponent } = useCurrentOpponent();
 
@@ -138,7 +150,12 @@ function VideoGameContent() {
         const handleGameReject = (data: unknown) => {
             console.log("Game request rejected");
             setOutgoingInvite(null);
-            alert("Opponent rejected the game request.");
+            setAlertState({
+                isOpen: true,
+                title: "Request Rejected",
+                message: "Opponent rejected the game request.",
+                type: "info"
+            });
         };
 
         const handleGameLeave = () => {
@@ -457,10 +474,20 @@ function VideoGameContent() {
                                                 },
                                                 body: JSON.stringify({ toUid: networkManager.opponentUid })
                                             });
-                                            alert("Friend request sent!");
+                                            setAlertState({
+                                                isOpen: true,
+                                                title: "Request Sent",
+                                                message: "Friend request sent!",
+                                                type: "success"
+                                            });
                                         } catch (e) {
                                             console.error(e);
-                                            alert("Failed to send friend request");
+                                            setAlertState({
+                                                isOpen: true,
+                                                title: "Error",
+                                                message: "Failed to send friend request",
+                                                type: "error"
+                                            });
                                         }
                                     }
                                 }}
@@ -580,6 +607,14 @@ function VideoGameContent() {
                     setStatus("Disconnected (Reported)");
                     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
                 }}
+            />
+
+            <AlertModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
             />
         </div>
     );

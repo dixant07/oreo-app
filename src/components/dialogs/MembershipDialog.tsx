@@ -82,12 +82,12 @@ export function MembershipDialog({ open, onOpenChange }: MembershipDialogProps) 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl rounded-3xl p-0 overflow-hidden border-0">
-                <div className="bg-gradient-to-br from-[#FFF8F0] to-orange-50 p-8">
-                    <DialogHeader className="mb-8">
-                        <DialogTitle className="text-3xl font-bold text-center text-gray-900">
+                <div className="bg-gradient-to-br from-[#FFF8F0] to-orange-50 p-6">
+                    <DialogHeader className="mb-6">
+                        <DialogTitle className="text-2xl font-bold text-center text-gray-900">
                             Upgrade Your Experience
                         </DialogTitle>
-                        <p className="text-center text-gray-500 mt-2">
+                        <p className="text-center text-gray-500 mt-2 text-sm">
                             Choose the plan that fits your style.
                         </p>
                     </DialogHeader>
@@ -98,11 +98,11 @@ export function MembershipDialog({ open, onOpenChange }: MembershipDialogProps) 
                         </div>
                     )}
 
-                    <div className="grid md:grid-cols-3 gap-6">
+                    <div className="grid md:grid-cols-3 gap-4">
                         {plans.map((plan) => (
                             <div
                                 key={plan.id}
-                                className={`relative p-6 rounded-2xl bg-white shadow-lg flex flex-col transition-all duration-300 hover:shadow-xl ${plan.popular ? 'ring-2 ring-orange-400 scale-[1.02]' : ''
+                                className={`relative p-5 rounded-2xl bg-white shadow-lg flex flex-col transition-all duration-300 hover:shadow-xl ${plan.popular ? 'ring-2 ring-orange-400 scale-[1.02]' : ''
                                     }`}
                             >
                                 {plan.popular && (
@@ -111,29 +111,29 @@ export function MembershipDialog({ open, onOpenChange }: MembershipDialogProps) 
                                     </div>
                                 )}
 
-                                <div className={`w-12 h-12 rounded-xl ${plan.color} flex items-center justify-center mb-4`}>
+                                <div className={`w-10 h-10 rounded-xl ${plan.color} flex items-center justify-center mb-4`}>
                                     {plan.icon}
                                 </div>
 
-                                <h3 className="text-xl font-bold text-gray-900 mb-1">{plan.name}</h3>
+                                <h3 className="text-lg font-bold text-gray-900 mb-1">{plan.name}</h3>
                                 <div className="flex items-baseline mb-4">
-                                    <span className="text-3xl font-bold text-gray-900">{plan.price}</span>
+                                    <span className="text-2xl font-bold text-gray-900">{plan.price}</span>
                                     <span className="text-gray-500 ml-1 text-sm">{plan.period}</span>
                                 </div>
 
-                                <ul className="space-y-3 mb-6 flex-1">
+                                <ul className="space-y-2 mb-6 flex-1">
                                     {plan.features.map((feature) => (
                                         <li key={feature} className="flex items-center gap-2 text-sm">
                                             <div className="h-4 w-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
                                                 <Check className="w-2.5 h-2.5 text-green-600" />
                                             </div>
-                                            <span className="text-gray-600">{feature}</span>
+                                            <span className="text-gray-600 font-medium">{feature}</span>
                                         </li>
                                     ))}
                                 </ul>
 
                                 <Button
-                                    className={`w-full rounded-xl h-11 font-bold ${plan.buttonClass}`}
+                                    className={`w-full rounded-xl h-10 font-bold ${plan.buttonClass}`}
                                     disabled={isButtonDisabled(plan.id)}
                                     onClick={() => {
                                         if (plan.id !== 'FREE') {

@@ -6,9 +6,10 @@ import Link from 'next/link';
 import { games, categories } from '@/app/(main)/games/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Play, Lock, MessageSquarePlus, X, Send, Loader2 } from 'lucide-react';
+import { Play, Lock, MessageSquarePlus, X, Send, Loader2, Users } from 'lucide-react';
 import { db, auth } from '@/lib/config/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { AlertModal } from '@/components/ui/alert-modal';
 
 interface GameListProps {
     onSelectGame?: (gameId: string) => void;
@@ -20,6 +21,19 @@ export function GameList({ onSelectGame, compact = false }: GameListProps) {
     const [showFeedback, setShowFeedback] = useState(false);
     const [feedbackText, setFeedbackText] = useState("");
     const [isSending, setIsSending] = useState(false);
+
+    // Alert Modal State
+    const [alertState, setAlertState] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'success' | 'error' | 'info';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
 
     const handleSendFeedback = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,10 +52,20 @@ export function GameList({ onSelectGame, compact = false }: GameListProps) {
             });
             setFeedbackText("");
             setShowFeedback(false);
-            alert("Feedback sent! Thank you.");
+            setAlertState({
+                isOpen: true,
+                title: "Feedback Sent",
+                message: "Thank you for your suggestion! We'll look into it.",
+                type: "success"
+            });
         } catch (error) {
             console.error("Error sending feedback:", error);
-            alert("Failed to send feedback. Please try again.");
+            setAlertState({
+                isOpen: true,
+                title: "Error",
+                message: "Failed to send feedback. Please try again.",
+                type: "error"
+            });
         } finally {
             setIsSending(false);
         }
@@ -53,7 +77,6 @@ export function GameList({ onSelectGame, compact = false }: GameListProps) {
 
     return (
         <div className={`h-full w-full bg-white/50 backdrop-blur-sm ${compact ? 'p-6' : 'p-8'} font-sans overflow-hidden flex flex-col relative`}>
-            {/* Feedback Button */}
             {/* Feedback Button */}
             <button
                 onClick={() => setShowFeedback(true)}
@@ -153,8 +176,6 @@ export function GameList({ onSelectGame, compact = false }: GameListProps) {
             {/* Scrollable Container */}
             <div className="flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar">
                 {/* Games Grid */}
-                {/* Games Grid */}
-                {/* Games Grid */}
                 <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 pb-8 ${!compact ? 'max-w-7xl mx-auto' : ''}`}>
                     {filteredGames.map((game) => (
                         <Card key={game.id} className="group border-0 shadow-sm hover:shadow-lg transition-all duration-300 bg-white/90 backdrop-blur-sm rounded-lg overflow-hidden flex flex-col ring-1 ring-gray-100 hover:ring-orange-500/30">
@@ -207,11 +228,19 @@ export function GameList({ onSelectGame, compact = false }: GameListProps) {
                                     )}
                                 </div>
                             </CardContent>
-                            {/* Footer removed to save space - moved interaction to image overlay */}
                         </Card>
                     ))}
                 </div>
             </div>
+
+            <AlertModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+            />
+
             <style jsx global>{`
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 6px;
@@ -230,4 +259,3 @@ export function GameList({ onSelectGame, compact = false }: GameListProps) {
         </div>
     );
 }
-

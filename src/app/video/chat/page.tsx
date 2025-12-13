@@ -21,6 +21,7 @@ import { ReportModal } from '@/components/dialogs/ReportModal';
 import { auth } from '@/lib/config/firebase';
 import { useChat } from '@/lib/contexts/ChatContext';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertModal } from '@/components/ui/alert-modal';
 
 export default function VideoChatPage() {
     const { networkManager } = useNetwork();
@@ -36,6 +37,17 @@ export default function VideoChatPage() {
     const [mode, setMode] = useState<'game' | 'video'>('video');
     const [showReportModal, setShowReportModal] = useState(false);
     const [incomingInvite, setIncomingInvite] = useState<{ gameId: string } | null>(null);
+    const [alertState, setAlertState] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'success' | 'error' | 'info';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
 
     const { opponent } = useCurrentOpponent();
 
@@ -281,10 +293,20 @@ export default function VideoChatPage() {
                                             },
                                             body: JSON.stringify({ toUid: networkManager.opponentUid })
                                         });
-                                        alert("Friend request sent!");
+                                        setAlertState({
+                                            isOpen: true,
+                                            title: "Request Sent",
+                                            message: "Friend request sent!",
+                                            type: "success"
+                                        });
                                     } catch (e) {
                                         console.error(e);
-                                        alert("Failed to send friend request");
+                                        setAlertState({
+                                            isOpen: true,
+                                            title: "Error",
+                                            message: "Failed to send friend request",
+                                            type: "error"
+                                        });
                                     }
                                 }
                             }}
@@ -404,6 +426,14 @@ export default function VideoChatPage() {
                     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
                     clearMessages();
                 }}
+            />
+
+            <AlertModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
             />
         </div>
     );

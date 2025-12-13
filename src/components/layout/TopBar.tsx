@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
     Settings,
@@ -53,6 +54,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MembershipDialog } from "@/components/dialogs/MembershipDialog";
+import { AlertModal } from "@/components/ui/alert-modal";
 
 interface TopBarProps {
     mode: 'game' | 'video';
@@ -87,7 +89,19 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
     // Chat Badge
     const { conversations } = useConversations();
     const unreadCount = conversations.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
+    const [alertState, setAlertState] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'success' | 'error' | 'info';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
 
+    // Handle initial connection
     const handleConnect = async (friendId: string, friendName?: string, friendAvatar?: string) => {
         try {
             if (!networkManager) {
@@ -107,9 +121,15 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
             }, 800);
 
         } catch (err: any) {
-            setOutgoingStatus('error');
-            setTimeout(() => setOutgoingStatus('idle'), 2000);
-            alert(err.message || "Failed to send invite");
+            console.error("Failed to send invite:", err);
+            setOutgoingStatus('idle');
+            setRecipientInfo(null);
+            setAlertState({
+                isOpen: true,
+                title: "Invite Failed",
+                message: err.message || "Failed to send invite",
+                type: "error"
+            });
         }
     };
 
@@ -219,9 +239,11 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
         <>
             <header className="sticky top-0 z-50 flex h-16 w-full items-center justify-between px-6 border-b border-gray-200 bg-white/80 backdrop-blur-md">
                 {/* Left: Logo */}
-                <div className="bg-orange-500 text-black font-bold text-lg px-5 py-1.5 rounded-full shadow-md">
-                    Oreo
-                </div>
+                <Link href="/home">
+                    <div className="bg-orange-500 text-black font-bold text-lg px-5 py-1.5 rounded-full shadow-md hover:opacity-90 transition-opacity cursor-pointer">
+                        Rumi
+                    </div>
+                </Link>
 
                 {/* Middle: Toggle & Preference */}
                 {showToggle && (
@@ -536,17 +558,6 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
                             setChatStartWith(null);
                         }}
                     />
-                    <Button
-                        size="icon"
-                        variant="ghost"
-                        className="absolute top-4 right-4 z-[110] bg-white/50 hover:bg-white rounded-full shadow-sm hover:text-red-500 transition-colors"
-                        onClick={() => {
-                            setIsChatOpen(false);
-                            setChatStartWith(null);
-                        }}
-                    >
-                        <X className="w-6 h-6" />
-                    </Button>
                 </div>
             )}
 
@@ -583,6 +594,14 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
             <MembershipDialog
                 open={isMembershipOpen}
                 onOpenChange={setIsMembershipOpen}
+            />
+
+            <AlertModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
             />
         </>
     );
