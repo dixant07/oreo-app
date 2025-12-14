@@ -248,7 +248,7 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
 
     return (
         <>
-            <header className="sticky top-0 z-50 flex h-16 w-full items-center justify-between px-6 border-b border-gray-200 bg-white/80 backdrop-blur-md">
+            <header className="sticky top-0 z-50 hidden md:flex h-16 w-full items-center justify-between px-6 border-b border-gray-200 bg-white/80 backdrop-blur-md">
                 {/* Left: Logo */}
                 <Link href="/home">
                     <div className="bg-orange-500 text-black font-bold text-lg px-5 py-1.5 rounded-full shadow-md hover:opacity-90 transition-opacity cursor-pointer">
@@ -258,7 +258,7 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
 
                 {/* Middle: Toggle & Preference */}
                 {showToggle && (
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <div className="order-3 w-full flex justify-center mt-2 md:mt-0 md:w-auto md:order-none md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 items-center gap-2">
                         <div className="bg-white p-1 rounded-full flex shadow-sm border border-gray-100">
                             <button
                                 onClick={() => onModeChange('game')}
@@ -384,47 +384,55 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-64 p-4 rounded-2xl shadow-xl border-0">
-                            <h3 className="font-bold text-gray-900 mb-3">Friends</h3>
+                            <h3 className="font-bold text-gray-900 mb-3">Online Friends</h3>
                             <div className="space-y-2">
                                 {friendsLoading ? (
                                     <p className="text-sm text-gray-500 text-center py-2">Loading...</p>
-                                ) : friends.length === 0 ? (
-                                    <p className="text-sm text-gray-500 text-center py-2">No friends yet</p>
+                                ) : friends.filter(f => f.isOnline).length === 0 ? (
+                                    <p className="text-sm text-gray-500 text-center py-2">No friends online</p>
                                 ) : (
-                                    friends.map(friend => (
-                                        <div key={friend.uid} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg group">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-full ${friend.isOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-medium">{friend.name}</span>
-                                                    <span className="text-[10px] text-gray-400">{friend.isOnline ? 'Online' : 'Offline'}</span>
+                                    friends
+                                        .filter(f => f.isOnline)
+                                        .slice(0, 3)
+                                        .map(friend => (
+                                            <div key={friend.uid} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg group">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-2 h-2 rounded-full bg-green-500`} />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium">{friend.name}</span>
+                                                        <span className="text-[10px] text-gray-400">Online</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-6 w-6 hover:bg-blue-50 hover:text-blue-600"
+                                                        onClick={() => {
+                                                            setChatStartWith(friend.uid);
+                                                            setIsChatOpen(true);
+                                                        }}
+                                                    >
+                                                        <MessageSquare className="w-3 h-3" />
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-6 w-6 hover:bg-orange-50 hover:text-orange-600"
+                                                        onClick={() => handleConnect(friend.uid, friend.name, friend.avatarUrl)}
+                                                        disabled={outgoingStatus !== 'idle'}
+                                                    >
+                                                        <Gamepad2 className="w-3 h-3" />
+                                                    </Button>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-6 w-6 hover:bg-blue-50 hover:text-blue-600"
-                                                    onClick={() => {
-                                                        setChatStartWith(friend.uid);
-                                                        setIsChatOpen(true);
-                                                    }}
-                                                >
-                                                    <MessageSquare className="w-3 h-3" />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className={`h-6 w-6 hover:bg-orange-50 hover:text-orange-600 ${!friend.isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                    onClick={() => friend.isOnline && handleConnect(friend.uid, friend.name, friend.avatarUrl)}
-                                                    disabled={!friend.isOnline || outgoingStatus !== 'idle'}
-                                                >
-                                                    <Gamepad2 className="w-3 h-3" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))
+                                        ))
                                 )}
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-gray-100 flex justify-end">
+                                <Link href="/friends" className="text-xs font-bold text-orange-500 hover:text-orange-600 hover:underline">
+                                    See All
+                                </Link>
                             </div>
                         </PopoverContent>
                     </Popover>
@@ -447,7 +455,7 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
                                 ) : friendRequests.length === 0 ? (
                                     <p className="text-sm text-center text-gray-500">No new notifications</p>
                                 ) : (
-                                    friendRequests.map(req => (
+                                    friendRequests.slice(0, 3).map(req => (
                                         <div key={req.id} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-xl">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -515,6 +523,11 @@ export function TopBar({ mode, onModeChange, showToggle = true }: TopBarProps) {
                                         </div>
                                     ))
                                 )}
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-gray-100 flex justify-end">
+                                <Link href="/friends" className="text-xs font-bold text-orange-500 hover:text-orange-600 hover:underline">
+                                    See All
+                                </Link>
                             </div>
                         </PopoverContent>
                     </Popover>

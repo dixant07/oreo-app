@@ -12,7 +12,8 @@ import {
     Smile,
     UserPlus,
     Flag,
-    Crown // Added import
+    Crown,
+    Gamepad2 // Added import
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TopBar } from '@/components/layout/TopBar';
@@ -427,6 +428,18 @@ export default function VideoChatPage() {
                     clearMessages();
                 }}
             />
+
+            {/* Mobile Game Toggle Button */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 z-50 md:hidden">
+                <Button
+                    onClick={() => router.push('/video/game')}
+                    className="rounded-r-full rounded-l-none bg-orange-500 hover:bg-orange-600 text-white shadow-lg pl-2 pr-4 py-6 font-bold flex items-center gap-2 transition-transform hover:translate-x-1 border-l-0"
+                >
+                    <Gamepad2 className="w-5 h-5" />
+                    <span className="text-sm hidden sm:inline">Let's Play</span>
+                    <span className="text-sm sm:hidden">Play</span>
+                </Button>
+            </div>
 
             <AlertModal
                 isOpen={alertState.isOpen}

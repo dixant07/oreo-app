@@ -73,9 +73,15 @@
 @layer base {
   * {
     @apply border-border;
+    touch-action: manipulation;
   }
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  main {
+    @apply pb-16 md:pb-0;
+    /* Bottom Nav height */
   }
 }

@@ -12,7 +12,8 @@ import {
     UserPlus,
     Flag,
     Send,
-    Loader2 // Added import
+    Loader2,
+    Video // Added import
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TopBar } from '@/components/layout/TopBar';
@@ -608,6 +609,18 @@ function VideoGameContent() {
                     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
                 }}
             />
+
+            {/* Mobile Video Chat Toggle Button */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 z-50 md:hidden">
+                <Button
+                    onClick={() => router.push('/video/chat')}
+                    className="rounded-l-full rounded-r-none bg-blue-500 hover:bg-blue-600 text-white shadow-lg pl-4 pr-2 py-6 font-bold flex items-center gap-2 transition-transform hover:-translate-x-1 border-r-0"
+                >
+                    <span className="text-sm sm:hidden">Chat</span>
+                    <span className="text-sm hidden sm:inline">Video Chat</span>
+                    <Video className="w-5 h-5" />
+                </Button>
+            </div>
 
             <AlertModal
                 isOpen={alertState.isOpen}

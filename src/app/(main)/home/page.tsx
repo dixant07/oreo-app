@@ -25,7 +25,7 @@ export default function HomePage() {
     const router = useRouter();
     const localVideoRef = useRef<HTMLVideoElement>(null);
 
-    const [mode, setMode] = useState<'game' | 'video'>('game');
+    const [mode, setMode] = useState<'game' | 'video'>('video');
     const [selectedGame, setSelectedGame] = useState(data.games[0].id);
     const [selectedRegion, setSelectedRegion] = useState(data.regions[0].id);
     const [selectedGender, setSelectedGender] = useState(data.genders[0].id);
@@ -97,7 +97,7 @@ export default function HomePage() {
             {/* Main Body */}
             <main className="flex-1 flex overflow-hidden">
                 {/* Left Half - Video */}
-                <div className="w-1/2 p-8 flex items-center justify-center relative">
+                <div className="hidden md:flex md:w-1/2 p-8 items-center justify-center relative">
                     <div className="relative w-full max-w-[340px] aspect-[3/5] rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white bg-black">
                         <video
                             ref={localVideoRef}
@@ -133,7 +133,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Right Half - Configuration */}
-                <div className="w-1/2 flex items-center justify-center p-8">
+                <div className="w-full md:w-1/2 flex items-center justify-center p-8">
                     <Card className="w-full max-w-sm p-6 shadow-xl border-0 bg-white/80 backdrop-blur-md rounded-2xl">
 
                         {/* Toggle */}
