@@ -13,7 +13,7 @@ import {
     UserPlus,
     Flag,
     Crown,
-    Gamepad2 // Added import
+    Gamepad2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TopBar } from '@/components/layout/TopBar';
@@ -38,6 +38,7 @@ export default function VideoChatPage() {
     const [mode, setMode] = useState<'game' | 'video'>('video');
     const [showReportModal, setShowReportModal] = useState(false);
     const [incomingInvite, setIncomingInvite] = useState<{ gameId: string } | null>(null);
+    const [mountTime] = useState(Date.now()); // Added for chat animation
     const [alertState, setAlertState] = useState<{
         isOpen: boolean;
         title: string;
@@ -201,15 +202,15 @@ export default function VideoChatPage() {
     };
 
     return (
-        <div className="flex h-screen flex-col bg-[#FFF8F0]">
+        <div className="flex h-screen flex-col bg-[#FFF8F0] overflow-hidden">
             {/* Header */}
             <TopBar mode={mode} onModeChange={handleModeToggle} />
 
             {/* Main Content */}
-            <main className="flex-1 flex p-2 gap-2 overflow-hidden">
+            <main className="flex-1 flex md:p-2 gap-0 md:gap-2 overflow-hidden relative">
 
-                {/* Left: Local Video */}
-                <Card className="flex-1 rounded-[1rem] overflow-hidden bg-[#D1D5DB] relative border-0 shadow-none p-0">
+                {/* Left: Local Video (PiP on Mobile) */}
+                <Card className="flex-1 md:flex-1 rounded-[1rem] overflow-hidden bg-[#D1D5DB] border-0 shadow-lg md:shadow-none p-0 absolute md:relative top-16 right-4 w-32 h-48 md:w-auto md:h-auto md:inset-auto z-20 transition-all">
                     <video
                         ref={localVideoRef}
                         autoPlay
@@ -217,13 +218,13 @@ export default function VideoChatPage() {
                         muted
                         className="w-full h-full object-cover"
                     />
-                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-medium">
+                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-medium hidden md:block">
                         You
                     </div>
                 </Card>
 
-                {/* Middle: Remote Video */}
-                <Card className="flex-1 rounded-[1rem] overflow-hidden bg-[#EAE8D9] relative border-0 shadow-none group p-0">
+                {/* Middle: Remote Video (Fullscreen on Mobile) */}
+                <Card className="flex-1 rounded-none md:rounded-[1rem] overflow-hidden bg-[#EAE8D9] relative border-0 shadow-none group p-0 absolute inset-0 md:relative md:inset-auto z-0">
                     <video
                         ref={remoteVideoRef}
                         autoPlay
@@ -269,18 +270,18 @@ export default function VideoChatPage() {
                         </div>
                     )}
 
-                    {/* User Info Overlay */}
-                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-left">
+                    {/* User Info Overlay (Opponent Name) */}
+                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-left z-10 w-fit">
                         <p className="font-bold text-sm leading-none">{opponent?.displayName || opponent?.name || "Opponent"}</p>
                         <p className="opacity-80 text-[10px] leading-none mt-0.5">{status === "Connected" ? "Online" : status}</p>
                     </div>
 
-                    {/* Actions */}
-                    <div className="absolute top-4 right-4 flex gap-2">
+                    {/* Actions (Friend/Report) */}
+                    <div className="absolute md:top-4 md:right-4 md:left-auto top-16 left-4 flex flex-col md:flex-row gap-2 z-10">
                         <Button
                             size="icon"
                             variant="secondary"
-                            className="h-8 w-8 rounded-full bg-blue-500/40 backdrop-blur hover:bg-blue-600/60 text-white border-0 transition-colors"
+                            className="h-10 w-10 md:h-8 md:w-8 rounded-full bg-blue-500/40 backdrop-blur hover:bg-blue-600/60 text-white border-0 transition-colors shadow-sm"
                             onClick={async () => {
                                 if (networkManager?.opponentUid) {
                                     try {
@@ -312,20 +313,20 @@ export default function VideoChatPage() {
                                 }
                             }}
                         >
-                            <UserPlus className="w-4 h-4" />
+                            <UserPlus className="w-5 h-5 md:w-4 md:h-4" />
                         </Button>
                         <Button
                             size="icon"
                             variant="secondary"
-                            className="h-8 w-8 rounded-full bg-red-500/40 backdrop-blur hover:bg-red-600/60 text-white border-0 transition-colors"
+                            className="h-10 w-10 md:h-8 md:w-8 rounded-full bg-red-500/40 backdrop-blur hover:bg-red-600/60 text-white border-0 transition-colors shadow-sm"
                             onClick={() => setShowReportModal(true)}
                         >
-                            <Flag className="w-4 h-4" />
+                            <Flag className="w-5 h-5 md:w-4 md:h-4" />
                         </Button>
                     </div>
 
-                    {/* Skip Button */}
-                    <div className="absolute bottom-4 right-4 z-20">
+                    {/* Skip Button (Bottom Right) */}
+                    <div className="absolute bottom-24 md:bottom-4 right-4 z-20">
                         <Button
                             onClick={handleSkip}
                             className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-5 py-2.5 font-bold text-sm shadow-lg flex items-center gap-1.5 transition-transform hover:scale-105"
@@ -344,12 +345,54 @@ export default function VideoChatPage() {
                             <div className="text-gray-400 font-medium">{status}</div>
                         </div>
                     )}
+
+                    {/* Mobile Floating Chat Overlay */}
+                    <div className="absolute bottom-20 left-4 right-4 flex flex-col justify-end pointer-events-none gap-2 z-30 min-h-[120px] md:hidden">
+                        <style jsx>{`
+                            @keyframes floatFade {
+                                0% { opacity: 0; transform: translateY(20px); }
+                                10% { opacity: 1; transform: translateY(0); }
+                                80% { opacity: 1; transform: translateY(0); }
+                                100% { opacity: 0; transform: translateY(-10px); }
+                            }
+                            .msg-anim {
+                                animation: floatFade 6s forwards;
+                            }
+                        `}</style>
+                        {messages.filter(m => m.timestamp > mountTime).slice(-4).map((msg) => (
+                            <div key={msg.id || Math.random()} className="msg-anim flex flex-col w-full">
+                                <div className={`backdrop-blur-md rounded-2xl px-4 py-2 text-sm text-white shadow-sm max-w-[85%] break-words bg-black/50 border border-white/10 ${msg.isLocal
+                                    ? 'self-end rounded-br-sm'
+                                    : 'self-start rounded-bl-sm'
+                                    }`}>
+                                    {msg.text}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </Card>
 
-                {/* Right: Chat */}
-                {/* Right: Chat */}
-                {/* Right: Chat */}
-                <Card className="w-80 flex flex-col rounded-[1rem] bg-white border-0 shadow-sm overflow-hidden p-0 gap-0">
+                {/* Mobile Chat Input (Bottom Fixed) moved outside Remote Video Card for z-index layering above everything */}
+                <div className="absolute bottom-0 left-0 right-0 p-2 md:hidden z-40 bg-gradient-to-t from-black/20 to-transparent pb-4">
+                    <form onSubmit={handleSendMessage} className="flex gap-2 items-center bg-white/90 backdrop-blur p-1.5 rounded-[1rem] border border-gray-200/50 shadow-lg transition-all focus-within:ring-2 focus-within:ring-orange-500/20">
+                        <input
+                            className="flex-1 bg-transparent border-none text-gray-900 text-sm placeholder-gray-500 px-4 py-1 focus:outline-none focus:ring-0"
+                            placeholder="Type a message..."
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                        />
+                        <Button
+                            type="submit"
+                            size="icon"
+                            className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 text-white border-0 transition-all shadow-md hover:scale-105 shrink-0"
+                        >
+                            <Send className="w-4 h-4 ml-0.5" />
+                        </Button>
+                    </form>
+                </div>
+
+                {/* Right: Chat (Desktop Only) */}
+                <Card className="w-80 hidden md:flex flex-col rounded-[1rem] bg-white border-0 shadow-sm overflow-hidden p-0 gap-0">
                     {/* Chat Header */}
                     <div className="p-2 border-b border-gray-100 flex items-center gap-3 bg-gray-50/50">
                         <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">

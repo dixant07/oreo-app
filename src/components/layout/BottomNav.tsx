@@ -9,6 +9,10 @@ import { cn } from "@/lib/utils/cn";
 export function BottomNav() {
     const pathname = usePathname();
 
+    if (pathname?.includes('/video/')) {
+        return null;
+    }
+
     const navItems = [
         {
             label: "Home",
