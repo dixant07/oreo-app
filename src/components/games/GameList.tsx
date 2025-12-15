@@ -145,12 +145,12 @@ export function GameList({ onSelectGame, compact = false }: GameListProps) {
 
             <div className={`flex-shrink-0 ${compact ? 'w-full' : 'max-w-7xl mx-auto w-full'}`}>
                 {/* Header */}
-                <div className="mb-3 text-center sm:text-left hidden md:block">
+                <div className="mb-3 text-center sm:text-left">
                     <h1 className={`${compact ? 'text-xl' : 'text-2xl'} font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 mb-1 tracking-tight`}>
                         Browse Games
                     </h1>
                     {!compact && (
-                        <p className="text-gray-500 text-sm max-w-2xl text-balance">
+                        <p className="text-gray-500 text-sm max-w-2xl text-balance hidden md:block">
                             Discover your next obsession. Play with friends or challenge strangers.
                         </p>
                     )}

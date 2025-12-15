@@ -325,7 +325,7 @@ function VideoGameContent() {
             <TopBar mode={mode} onModeChange={handleModeToggle} />
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col-reverse md:flex-row p-2 gap-2 overflow-hidden">
+            <main className="flex-1 flex flex-col-reverse md:flex-row p-0 md:p-2 gap-2 overflow-hidden">
 
                 {/* Left: Game Area (Larger) */}
                 <Card className={`flex-1 md:flex-[2] rounded-[1rem] overflow-hidden border-0 shadow-2xl bg-white relative flex flex-col ring-1 ring-gray-100 p-0 ${showGame ? 'mb-0' : 'mb-16'} md:mb-0`}>
