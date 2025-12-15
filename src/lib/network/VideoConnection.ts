@@ -235,9 +235,17 @@ export class VideoConnection {
     }
 
     async handleAnswer(data: SignalingData) {
-        if (!this.peerConnection) return;
+        if (!this.peerConnection) {
+            console.error('[VideoConnection] PeerConnection not initialized');
+            return;
+        }
         try {
-            console.log('[VideoConnection] Received answer');
+            console.log(`[VideoConnection] Received answer. Current State: ${this.peerConnection.signalingState}`);
+            // [FIX] Guard Clause: Ignore answers if we are not waiting for one
+            if (this.peerConnection.signalingState === 'stable') {
+                console.warn('[VideoConnection] Received answer while in stable state. Ignoring duplicate or late message.');
+                return;
+            }
             if (data.answer) {
                 await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
             }
