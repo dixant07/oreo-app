@@ -285,7 +285,10 @@ export class NetworkManager {
     // Also clear flag if user cancels manually (if you have a cancel function)
     cancelSearch() {
         this.isSearching = false;
-        // emit leave_queue event if you have one
+        if (this.socket && this.isSignalingConnected) {
+            // actually tell the server to remove us
+            this.socket.emit('leave_queue');
+        }
     }
 
     skipMatch() {
