@@ -27,6 +27,8 @@ export class NetworkManager {
     videoConnection: VideoConnection | null = null;
     isSignalingConnected: boolean = false;
     localStream: MediaStream | null = null;
+    private isSearching: boolean = false; // [FIX] Track search state
+    private lastPreferences: any = {};    // [FIX] Store prefs for re-queueing
 
     constructor() {
         this.eventEmitter = new EventTarget();
@@ -66,6 +68,14 @@ export class NetworkManager {
                 this.socket.on('connect', () => {
                     console.log('[NetworkManager] Connected to signaling server');
                     this.isSignalingConnected = true;
+                    // [FIX] Auto-rejoin queue if we were searching before disconnect
+                    if (this.isSearching) {
+                        console.log('[NetworkManager] Restoring queue position after reconnect...');
+                        this.socket?.emit('join_queue', {
+                            mode: 'random',
+                            preferences: this.lastPreferences
+                        });
+                    }
                     resolve();
                 });
 
@@ -160,6 +170,7 @@ export class NetworkManager {
         this.opponentUid = msg.opponentUid; // Store UID
         this.isInitiator = msg.isInitiator;
         this.iceServers = msg.iceServers || { game: [], video: [] };
+        this.isSearching = false; // [FIX] Clear flag when matched
 
         console.log('=== MATCH FOUND ===');
         console.log('Opponent Socket:', this.opponentId, 'UID:', this.opponentUid);
@@ -222,6 +233,8 @@ export class NetworkManager {
             console.warn('[NetworkManager] Already in a match, ignoring findMatch request.');
             return;
         }
+        this.isSearching = true; // [FIX] Set flag
+        this.lastPreferences = preferences; // [FIX] Store prefs
 
         if (this.socket && this.isSignalingConnected) {
             console.log('[NetworkManager] Joining matchmaking queue...');
@@ -267,6 +280,12 @@ export class NetworkManager {
         if (this.socket && this.isSignalingConnected) {
             this.socket.emit('cancel_invite', { targetUid });
         }
+    }
+
+    // Also clear flag if user cancels manually (if you have a cancel function)
+    cancelSearch() {
+        this.isSearching = false;
+        // emit leave_queue event if you have one
     }
 
     skipMatch() {
