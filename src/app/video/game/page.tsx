@@ -438,128 +438,126 @@ function VideoGameContent() {
                 </Card>
 
                 {/* Right: Video Area */}
-                <div className="relative flex flex-row md:flex-col gap-2 min-w-[320px] h-32 md:h-auto md:flex-1 shrink-0">
+                <div className="flex flex-col gap-2 min-w-[320px] md:h-full md:flex-1 shrink-0 overflow-hidden">
 
-                    {/* VS Label (Mobile Only) */}
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 md:hidden pointer-events-none">
-                        <div className="bg-orange-600 text-white text-[10px] font-black italic tracking-tighter px-2 py-1 rounded-full shadow-lg border-2 border-white transform rotate-12">
-                            VS
-                        </div>
-                    </div>
-
-                    {/* Remote Video (Top Half) */}
-                    <Card className="flex-1 rounded-[1rem] overflow-hidden border-0 shadow-xl bg-[#EAE8D9] relative group p-0">
-                        <video
-                            ref={remoteVideoRef}
-                            autoPlay
-                            playsInline
-                            className="w-full h-full object-cover"
-                        />
-
-                        {/* Opponent Info */}
-                        <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-left">
-                            <p className="font-bold text-sm leading-none">{opponent?.displayName || opponent?.name || "Opponent"}</p>
-                            <p className="opacity-80 text-[10px] leading-none mt-0.5">{status === "Connected" ? "Online" : status}</p>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="absolute top-4 right-4 flex gap-2">
-                            <Button
-                                size="icon"
-                                variant="secondary"
-                                className="h-8 w-8 rounded-full bg-blue-500/40 backdrop-blur hover:bg-blue-600/60 text-white border-0 transition-colors"
-                                onClick={async () => {
-                                    if (networkManager?.opponentUid) {
-                                        try {
-                                            const user = auth.currentUser;
-                                            const token = await user?.getIdToken();
-                                            await fetch('/api/friends/request', {
-                                                method: 'POST',
-                                                headers: {
-                                                    'Content-Type': 'application/json',
-                                                    'Authorization': `Bearer ${token}`
-                                                },
-                                                body: JSON.stringify({ toUid: networkManager.opponentUid })
-                                            });
-                                            setAlertState({
-                                                isOpen: true,
-                                                title: "Request Sent",
-                                                message: "Friend request sent!",
-                                                type: "success"
-                                            });
-                                        } catch (e) {
-                                            console.error(e);
-                                            setAlertState({
-                                                isOpen: true,
-                                                title: "Error",
-                                                message: "Failed to send friend request",
-                                                type: "error"
-                                            });
-                                        }
-                                    }
-                                }}
-                            >
-                                <UserPlus className="w-4 h-4" />
-                            </Button>
-                            <Button
-                                size="icon"
-                                variant="secondary"
-                                className="h-8 w-8 rounded-full bg-red-500/40 backdrop-blur hover:bg-red-600/60 text-white border-0 transition-colors"
-                                onClick={() => setShowReportModal(true)}
-                            >
-                                <Flag className="w-4 h-4" />
-                            </Button>
-                        </div>
-
-
-
-
-
-                        {/* Skip Button */}
-                        <div className="absolute bottom-4 right-4 z-20">
-                            <Button
-                                onClick={handleSkip}
-                                className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-5 py-2.5 font-bold text-sm shadow-lg flex items-center gap-1.5 transition-transform hover:scale-105"
-                            >
-                                <div className="flex -space-x-1">
-                                    <SkipForward className="w-4 h-4 fill-current" />
-                                    <SkipForward className="w-4 h-4 fill-current" />
-                                </div>
-                                Skip
-                            </Button>
-                        </div>
-
-                        {/* Placeholder */}
-                        {!remoteVideoRef.current?.srcObject && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-[#EAE8D9]">
-                                <div className="text-center text-gray-400">
-                                    <div className="w-20 h-20 bg-black/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <UserIcon className="w-10 h-10 opacity-30" />
-                                    </div>
-                                    <p className="font-medium">Waiting for opponent...</p>
-                                </div>
+                    {/* Video Strip Wrapper */}
+                    <div className="flex flex-row gap-2 h-32 md:h-auto md:flex-col md:flex-1 md:min-h-0 w-full relative">
+                        {/* VS Label (Mobile Only) */}
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 md:hidden pointer-events-none">
+                            <div className="bg-orange-600 text-white text-[10px] font-black italic tracking-tighter px-2 py-1 rounded-full shadow-lg border-2 border-white transform rotate-12">
+                                VS
                             </div>
-                        )}
-                    </Card>
-
-                    {/* Local Video (Bottom Half) with Chat Overlay */}
-                    <Card className="flex-1 rounded-[1rem] overflow-hidden border-0 shadow-xl bg-gray-200 relative group/local p-0">
-                        <video
-                            ref={localVideoRef}
-                            autoPlay
-                            playsInline
-                            muted
-                            className="w-full h-full object-cover"
-                        />
-
-                        {/* Status Badge (Moved to top-left) */}
-                        <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-bold z-10">
-                            You
                         </div>
 
-                        {/* Floating Messages Overlay (Desktop Only) */}
-                        <div className="hidden md:flex absolute bottom-4 left-4 right-4 flex-col justify-end pointer-events-none gap-2 z-10 min-h-[120px]">
-                            <style jsx>{`
+                        {/* Remote Video (Top Half) */}
+                        <Card className="flex-1 md:flex-1 md:min-h-0 rounded-[1rem] overflow-hidden border-0 shadow-xl bg-[#EAE8D9] relative group p-0">
+                            <video
+                                ref={remoteVideoRef}
+                                autoPlay
+                                playsInline
+                                className="w-full h-full object-cover"
+                            />
+
+                            {/* Opponent Info */}
+                            <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-left">
+                                <p className="font-bold text-sm leading-none">{opponent?.displayName || opponent?.name || "Opponent"}</p>
+                                <p className="opacity-80 text-[10px] leading-none mt-0.5">{status === "Connected" ? "Online" : status}</p>
+                            </div>
+
+                            {/* Actions (Desktop Only) */}
+                            <div className="absolute top-4 right-4 hidden md:flex gap-2">
+                                <Button
+                                    size="icon"
+                                    variant="secondary"
+                                    className="h-8 w-8 rounded-full bg-blue-500/40 backdrop-blur hover:bg-blue-600/60 text-white border-0 transition-colors"
+                                    onClick={async () => {
+                                        if (networkManager?.opponentUid) {
+                                            try {
+                                                const user = auth.currentUser;
+                                                const token = await user?.getIdToken();
+                                                await fetch('/api/friends/request', {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'Authorization': `Bearer ${token}`
+                                                    },
+                                                    body: JSON.stringify({ toUid: networkManager.opponentUid })
+                                                });
+                                                setAlertState({
+                                                    isOpen: true,
+                                                    title: "Request Sent",
+                                                    message: "Friend request sent!",
+                                                    type: "success"
+                                                });
+                                            } catch (e) {
+                                                console.error(e);
+                                                setAlertState({
+                                                    isOpen: true,
+                                                    title: "Error",
+                                                    message: "Failed to send friend request",
+                                                    type: "error"
+                                                });
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <UserPlus className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    variant="secondary"
+                                    className="h-8 w-8 rounded-full bg-red-500/40 backdrop-blur hover:bg-red-600/60 text-white border-0 transition-colors"
+                                    onClick={() => setShowReportModal(true)}
+                                >
+                                    <Flag className="w-4 h-4" />
+                                </Button>
+                            </div>
+
+                            {/* Skip Button (Desktop Only) */}
+                            <div className="absolute bottom-4 right-4 z-20 hidden md:block">
+                                <Button
+                                    onClick={handleSkip}
+                                    className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-5 py-2.5 font-bold text-sm shadow-lg flex items-center gap-1.5 transition-transform hover:scale-105"
+                                >
+                                    <div className="flex -space-x-1">
+                                        <SkipForward className="w-4 h-4 fill-current" />
+                                        <SkipForward className="w-4 h-4 fill-current" />
+                                    </div>
+                                    Skip
+                                </Button>
+                            </div>
+
+                            {/* Placeholder */}
+                            {!remoteVideoRef.current?.srcObject && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-[#EAE8D9]">
+                                    <div className="text-center text-gray-400">
+                                        <div className="w-20 h-20 bg-black/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <UserIcon className="w-10 h-10 opacity-30" />
+                                        </div>
+                                        <p className="font-medium">Waiting for opponent...</p>
+                                    </div>
+                                </div>
+                            )}
+                        </Card>
+
+                        {/* Local Video (Bottom Half) with Chat Overlay */}
+                        <Card className="flex-1 md:flex-1 md:min-h-0 rounded-[1rem] overflow-hidden border-0 shadow-xl bg-gray-200 relative group/local p-0">
+                            <video
+                                ref={localVideoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="w-full h-full object-cover"
+                            />
+
+                            {/* Status Badge (Moved to top-left) */}
+                            <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-bold z-10">
+                                You
+                            </div>
+
+                            {/* Floating Messages Overlay (Desktop Only) */}
+                            <div className="hidden md:flex absolute bottom-4 left-4 right-4 flex-col justify-end pointer-events-none gap-2 z-10 min-h-[120px]">
+                                <style jsx>{`
                                 @keyframes floatFade {
                                     0% { opacity: 0; transform: translateY(20px); }
                                     10% { opacity: 1; transform: translateY(0); }
@@ -570,18 +568,83 @@ function VideoGameContent() {
                                     animation: floatFade 6s forwards;
                                 }
                             `}</style>
-                            {messages.filter(m => m.timestamp > mountTime).slice(-4).map((msg) => (
-                                <div key={msg.id || Math.random()} className="msg-anim flex flex-col w-full">
-                                    <div className={`backdrop-blur-md rounded-2xl px-4 py-2 text-sm text-white shadow-sm max-w-[85%] break-words bg-black/50 border border-white/10 ${msg.isLocal
-                                        ? 'self-end rounded-br-sm'
-                                        : 'self-start rounded-bl-sm'
-                                        }`}>
-                                        {msg.text}
+                                {messages.filter(m => m.timestamp > mountTime).slice(-4).map((msg) => (
+                                    <div key={msg.id || Math.random()} className="msg-anim flex flex-col w-full">
+                                        <div className={`backdrop-blur-md rounded-2xl px-4 py-2 text-sm text-white shadow-sm max-w-[85%] break-words bg-black/50 border border-white/10 ${msg.isLocal
+                                            ? 'self-end rounded-br-sm'
+                                            : 'self-start rounded-bl-sm'
+                                            }`}>
+                                            {msg.text}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
+                                ))}
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* Mobile Action Bar (New) */}
+                    <div className={`${showGame ? 'hidden' : 'flex'} flex-row justify-between items-center gap-2 md:hidden w-full h-12`}>
+                        {/* Friend Request Button */}
+                        <Button
+                            size="icon"
+                            variant="secondary"
+                            className="h-12 w-12 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-600 border border-blue-200 shadow-sm"
+                            onClick={async () => {
+                                if (networkManager?.opponentUid) {
+                                    try {
+                                        const user = auth.currentUser;
+                                        const token = await user?.getIdToken();
+                                        await fetch('/api/friends/request', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'Authorization': `Bearer ${token}`
+                                            },
+                                            body: JSON.stringify({ toUid: networkManager.opponentUid })
+                                        });
+                                        setAlertState({
+                                            isOpen: true,
+                                            title: "Request Sent",
+                                            message: "Friend request sent!",
+                                            type: "success"
+                                        });
+                                    } catch (e) {
+                                        console.error(e);
+                                        setAlertState({
+                                            isOpen: true,
+                                            title: "Error",
+                                            message: "Failed to send friend request",
+                                            type: "error"
+                                        });
+                                    }
+                                }
+                            }}
+                        >
+                            <UserPlus className="w-5 h-5" />
+                        </Button>
+
+                        {/* Skip Button (Center, Prominent) */}
+                        <Button
+                            onClick={handleSkip}
+                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded-xl h-12 font-bold text-lg shadow-md flex items-center justify-center gap-2"
+                        >
+                            <div className="flex -space-x-1">
+                                <SkipForward className="w-5 h-5 fill-current" />
+                                <SkipForward className="w-5 h-5 fill-current" />
+                            </div>
+                            Skip Match
+                        </Button>
+
+                        {/* Report Button */}
+                        <Button
+                            size="icon"
+                            variant="secondary"
+                            className="h-12 w-12 rounded-xl bg-red-100 hover:bg-red-200 text-red-600 border border-red-200 shadow-sm"
+                            onClick={() => setShowReportModal(true)}
+                        >
+                            <Flag className="w-5 h-5" />
+                        </Button>
+                    </div>
 
                     {/* Mobile Chat Overlay */}
                     <div className="md:hidden fixed bottom-16 left-4 right-4 flex flex-col justify-end pointer-events-none gap-2 z-40 h-32 mask-image-gradient-to-t">
