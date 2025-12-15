@@ -13,7 +13,8 @@ import {
     UserPlus,
     Flag,
     Crown,
-    Gamepad2
+    Gamepad2,
+    X
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TopBar } from '@/components/layout/TopBar';
@@ -491,6 +492,18 @@ export default function VideoChatPage() {
                 message={alertState.message}
                 type={alertState.type}
             />
+
+            {/* Mobile Exit Button */}
+            <div className="fixed top-4 right-4 z-50 md:hidden">
+                <Button
+                    variant="secondary"
+                    size="icon"
+                    className="rounded-full shadow-lg bg-white/90 backdrop-blur-sm hover:bg-white text-gray-800 border border-gray-200"
+                    onClick={() => router.push('/home')}
+                >
+                    <X className="w-5 h-5" />
+                </Button>
+            </div>
         </div>
     );
 }
