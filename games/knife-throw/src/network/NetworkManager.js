@@ -28,6 +28,8 @@ export class NetworkManager {
 
         // Buffer for pending offer if user hasn't clicked connect yet
         this.pendingOffer = null;
+        // [FIX] Add buffer for pending ICE candidates
+        this.pendingCandidates = [];
     }
 
     /**
@@ -129,6 +131,10 @@ export class NetworkManager {
         this.socket.on('ice-candidate', (data) => {
             if (this.gameConnection) {
                 this.gameConnection.handleCandidate(data);
+            } else {
+                // [FIX] Buffer candidates if connection isn't ready yet
+                console.log('[NetworkManager] Received candidate before game connection initialized. Buffering...');
+                this.pendingCandidates.push(data);
             }
         });
     }
@@ -195,11 +201,20 @@ export class NetworkManager {
 
         await this.initializeGameConnection();
 
-        // Process pending offer if any
+        // 1. Process pending offer if any
         if (this.pendingOffer && !this.isInitiator) {
             console.log('[NetworkManager] Processing buffered offer...');
             await this.gameConnection.handleOffer(this.pendingOffer);
             this.pendingOffer = null;
+        }
+
+        // 2. [FIX] Process pending candidates AFTER offer is handled
+        if (this.pendingCandidates.length > 0) {
+            console.log(`[NetworkManager] Processing ${this.pendingCandidates.length} buffered ICE candidates...`);
+            for (const candidateData of this.pendingCandidates) {
+                await this.gameConnection.handleCandidate(candidateData);
+            }
+            this.pendingCandidates = []; // Clear buffer
         }
     }
 

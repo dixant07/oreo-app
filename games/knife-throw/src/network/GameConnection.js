@@ -283,13 +283,15 @@ export class GameConnection {
      */
     async handleCandidate(data) {
         try {
-            if (this.peerConnection) {
+            // [Safety Check] Ensure PC exists
+            if (this.peerConnection && this.peerConnection.signalingState !== 'closed') {
                 await this.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
             }
         } catch (err) {
             console.error('[GameConnection] Error handling ICE candidate:', err);
         }
     }
+
 
     /**
      * Handle connection failure
