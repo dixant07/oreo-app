@@ -80,7 +80,7 @@ export function GameList({ onSelectGame, compact = false }: GameListProps) {
             {/* Feedback Button */}
             <button
                 onClick={() => setShowFeedback(true)}
-                className="absolute top-4 right-4 z-40 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full shadow-lg transition-all hover:scale-105 group flex items-center gap-2"
+                className="absolute top-4 right-4 z-40 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full shadow-lg transition-all hover:scale-105 group hidden md:flex items-center gap-2"
                 title="Send Feedback"
             >
                 <MessageSquarePlus className="w-4 h-4" />
@@ -145,7 +145,7 @@ export function GameList({ onSelectGame, compact = false }: GameListProps) {
 
             <div className={`flex-shrink-0 ${compact ? 'w-full' : 'max-w-7xl mx-auto w-full'}`}>
                 {/* Header */}
-                <div className="mb-3 text-center sm:text-left">
+                <div className="mb-3 text-center sm:text-left hidden md:block">
                     <h1 className={`${compact ? 'text-xl' : 'text-2xl'} font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 mb-1 tracking-tight`}>
                         Browse Games
                     </h1>
@@ -157,7 +157,7 @@ export function GameList({ onSelectGame, compact = false }: GameListProps) {
                 </div>
 
                 {/* Filters */}
-                <div className="flex flex-wrap gap-1.5 mb-4 justify-center sm:justify-start">
+                <div className="hidden md:flex flex-wrap gap-1.5 mb-4 justify-center sm:justify-start">
                     {categories.map((category) => (
                         <button
                             key={category}

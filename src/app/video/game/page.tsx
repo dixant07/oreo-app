@@ -325,11 +325,10 @@ function VideoGameContent() {
             <TopBar mode={mode} onModeChange={handleModeToggle} />
 
             {/* Main Content */}
-            <main className="flex-1 flex p-2 gap-2 overflow-hidden">
+            <main className="flex-1 flex flex-col-reverse md:flex-row p-2 gap-2 overflow-hidden">
 
                 {/* Left: Game Area (Larger) */}
-                {/* Left: Game Area (Larger) */}
-                <Card className="flex-[2] rounded-[1rem] overflow-hidden border-0 shadow-2xl bg-white relative flex flex-col h-full ring-1 ring-gray-100 p-0">
+                <Card className={`flex-1 md:flex-[2] rounded-[1rem] overflow-hidden border-0 shadow-2xl bg-white relative flex flex-col ring-1 ring-gray-100 p-0 ${showGame ? 'mb-0' : 'mb-16'} md:mb-0`}>
 
                     {/* Close Game Button */}
                     {showGame && (
@@ -439,7 +438,14 @@ function VideoGameContent() {
                 </Card>
 
                 {/* Right: Video Area */}
-                <div className="flex-1 flex flex-col gap-2 min-w-[320px]">
+                <div className="relative flex flex-row md:flex-col gap-2 min-w-[320px] h-32 md:h-auto md:flex-1 shrink-0">
+
+                    {/* VS Label (Mobile Only) */}
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 md:hidden pointer-events-none">
+                        <div className="bg-orange-600 text-white text-[10px] font-black italic tracking-tighter px-2 py-1 rounded-full shadow-lg border-2 border-white transform rotate-12">
+                            VS
+                        </div>
+                    </div>
 
                     {/* Remote Video (Top Half) */}
                     <Card className="flex-1 rounded-[1rem] overflow-hidden border-0 shadow-xl bg-[#EAE8D9] relative group p-0">
@@ -551,8 +557,8 @@ function VideoGameContent() {
                             You
                         </div>
 
-                        {/* Floating Messages Overlay */}
-                        <div className="absolute bottom-4 left-4 right-4 flex flex-col justify-end pointer-events-none gap-2 z-10 min-h-[120px]">
+                        {/* Floating Messages Overlay (Desktop Only) */}
+                        <div className="hidden md:flex absolute bottom-4 left-4 right-4 flex-col justify-end pointer-events-none gap-2 z-10 min-h-[120px]">
                             <style jsx>{`
                                 @keyframes floatFade {
                                     0% { opacity: 0; transform: translateY(20px); }
@@ -577,8 +583,34 @@ function VideoGameContent() {
                         </div>
                     </Card>
 
+                    {/* Mobile Chat Overlay */}
+                    <div className="md:hidden fixed bottom-16 left-4 right-4 flex flex-col justify-end pointer-events-none gap-2 z-40 h-32 mask-image-gradient-to-t">
+                        <style jsx>{`
+                            @keyframes floatFadeMobile {
+                                0% { opacity: 0; transform: translateY(10px); }
+                                10% { opacity: 1; transform: translateY(0); }
+                                90% { opacity: 1; transform: translateY(0); }
+                                100% { opacity: 0; transform: translateY(-5px); }
+                            }
+                            .msg-anim-mobile {
+                                animation: floatFadeMobile 4s forwards;
+                            }
+                        `}</style>
+                        {messages.filter(m => m.timestamp > mountTime).slice(-3).map((msg) => (
+                            <div key={msg.id || Math.random()} className="msg-anim-mobile flex flex-col w-full">
+                                <div className={`backdrop-blur-md rounded-2xl px-3 py-1.5 text-xs text-white shadow-sm max-w-[85%] break-words bg-black/60 border border-white/10 ${msg.isLocal
+                                    ? 'self-end rounded-br-sm'
+                                    : 'self-start rounded-bl-sm'
+                                    }`}>
+                                    <span className="font-bold mr-1 opacity-75"></span>
+                                    {msg.text}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
                     {/* Input Bar (Below Video) */}
-                    <div className="w-full">
+                    <div className={`w-full fixed bottom-0 left-0 right-0 p-2 bg-white/80 backdrop-blur-md md:static md:bg-transparent md:p-0 z-50 ${showGame ? 'hidden md:block' : ''}`}>
                         <form onSubmit={handleSendMessage} className="flex gap-2 items-center bg-white p-1.5 rounded-[1rem] border border-gray-200 shadow-sm transition-all focus-within:ring-2 focus-within:ring-orange-500/20">
                             <input
                                 className="flex-1 bg-transparent border-none text-gray-900 text-sm placeholder-gray-500 px-4 py-1 focus:outline-none focus:ring-0"
