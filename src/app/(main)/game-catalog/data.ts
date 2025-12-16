@@ -10,7 +10,7 @@ export interface Game {
 export const games: Game[] = [
     {
         id: 'knife-throw',
-        title: 'Knife Throw',
+        title: 'KNIFE THROW',
         category: 'Action',
         image: '/knife-throw.png',
         route: '/video/game',
@@ -18,57 +18,57 @@ export const games: Game[] = [
     },
     {
         id: 'ping-pong',
-        title: 'Ping Pong',
+        title: 'PING PONG',
         category: '2-Player',
-        image: '/strategy.png',
+        image: '/ping-pong.png',
         route: '/video/game',
         isAvailable: true,
     },
     {
-        id: 'sudoku-zen',
-        title: 'Sudoku Zen',
-        category: 'Puzzle',
-        image: '/strategy.png', // Placeholder
-        route: '/video/game',
-        isAvailable: false,
-    },
-    {
-        id: 'pixel-puzzlers',
-        title: 'Pixel Puzzlers',
-        category: 'Puzzle',
-        image: '/strategy.png', // Placeholder
-        route: '/video/game',
-        isAvailable: false,
-    },
-    {
-        id: 'chess-masters',
-        title: 'Chess Masters',
+        id: 'darts',
+        title: 'DARTS',
         category: 'Strategy',
-        image: '/strategy.png', // Placeholder
+        image: '/darts.png', // Placeholder
         route: '/video/game',
         isAvailable: false,
     },
     {
-        id: 'rogue-runner',
-        title: 'Rogue Runner',
+        id: 'tic-tac-toe',
+        title: 'TIC TAC TOE',
+        category: 'Strategy',
+        image: '/tic-tac-toe.png', // Placeholder
+        route: '/video/game',
+        isAvailable: false,
+    },
+    {
+        id: 'connect-four',
+        title: 'CONNECT FOUR',
+        category: 'Strategy',
+        image: '/connect-four.png', // Placeholder
+        route: '/video/game',
+        isAvailable: false,
+    },
+    {
+        id: 'bowling',
+        title: 'BOWLING',
         category: 'Action',
-        image: '/strategy.png', // Placeholder
+        image: '/bowling.png', // Placeholder
         route: '/video/game',
         isAvailable: false,
     },
     {
-        id: 'card-clash',
-        title: 'Card Clash',
-        category: 'Card Games',
-        image: '/strategy.png', // Placeholder
+        id: 'dumb-charades',
+        title: 'DUMB CHARADES',
+        category: 'Icebreaker',
+        image: '/dumb-charades.png', // Placeholder
         route: '/video/game',
         isAvailable: false,
     },
     {
-        id: 'trivia-time',
-        title: 'Trivia Time',
-        category: 'Puzzle',
-        image: '/strategy.png', // Placeholder
+        id: 'doodle-guess',
+        title: 'DOODLE GUESS',
+        category: 'Icebreaker',
+        image: '/doodle-guess.png', // Placeholder
         route: '/video/game',
         isAvailable: false,
     },
@@ -76,9 +76,9 @@ export const games: Game[] = [
 
 export const categories = [
     'All',
+    'Icebreaker',
     'Strategy',
     'Puzzle',
     'Action',
-    '2-Player',
-    'Card Games',
+
 ];
