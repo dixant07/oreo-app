@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Gamepad2, MessageSquare, Users, Bell } from "lucide-react";
+import { Home, Gamepad2, MessageSquare, Users, Bell, User } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 export function BottomNav() {
@@ -32,6 +32,12 @@ export function BottomNav() {
             href: "/friends", // Placeholder for now, user will specify content later
             icon: Users,
             isActive: (path: string) => path === "/friends",
+        },
+        {
+            label: "Profile",
+            href: "/user-profile",
+            icon: User,
+            isActive: (path: string) => path === "/user-profile",
         },
     ];
 

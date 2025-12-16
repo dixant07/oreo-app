@@ -222,10 +222,11 @@ export default function UserProfilePage() {
             <div className="w-full max-w-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4">
+                    <h1 className="text-xl font-bold text-gray-900 md:hidden">User Profile</h1>
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="hover:bg-orange-100 text-gray-600 -ml-2"
+                        className="hover:bg-orange-100 text-gray-600 -ml-2 hidden md:flex"
                         onClick={() => router.back()}
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />

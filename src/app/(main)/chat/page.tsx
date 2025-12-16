@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useConversations, useChatMessages, Conversation, Message } from '@/lib/hooks/useChat';
 import { useNetwork } from '@/lib/contexts/NetworkContext';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,7 @@ export default function ChatPage({ preselectedChatId, preselectedStartWith, onBa
 // Chat content component that uses useSearchParams
 function ChatContent({ preselectedChatId, preselectedStartWith, onBack }: ChatPageProps) {
     const { user } = useNetwork();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const initialChatId = preselectedChatId ?? searchParams.get('id');
     const startWithId = preselectedStartWith ?? searchParams.get('startWith');
@@ -145,6 +146,8 @@ function ChatContent({ preselectedChatId, preselectedStartWith, onBack }: ChatPa
                         console.error("Error fetching user for new chat", err);
                     }
                 }
+            } else {
+                setSelectedChatId(null);
             }
         };
 
@@ -268,7 +271,7 @@ function ChatContent({ preselectedChatId, preselectedStartWith, onBack }: ChatPa
                     if (!res.ok) throw new Error("Failed to block");
 
                     toast.success("User blocked", { id: toastId });
-                    setSelectedChatId(null);
+                    router.push('/chat'); // Clear selection
                 } catch (error) {
                     console.error(error);
                     toast.error("Failed to block user", { id: toastId });
@@ -313,19 +316,19 @@ function ChatContent({ preselectedChatId, preselectedStartWith, onBack }: ChatPa
     }
 
     return (
-        <div className="flex h-screen bg-gray-50 overflow-hidden">
+        <div className="flex h-screen bg-gray-50 overflow-hidden pb-16 md:pb-0">
             {/* Left Pane: Conversations List */}
             {/* Added shrink-0 to prevent this pane from collapsing weirdly, though usually it's hidden on mobile */}
             <div className={`w-full md:w-80 lg:w-96 shrink-0 bg-white/80 backdrop-blur-xl border-r border-gray-200/50 flex flex-col transition-all duration-300 ${selectedChatId ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 md:p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-3">
                         {onBack ? (
-                            <Button variant="ghost" size="icon" className="h-10 w-10 text-gray-700 hover:bg-gray-200/50 rounded-full font-bold" onClick={onBack}>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 text-gray-700 hover:bg-gray-200/50 rounded-full font-bold hidden md:flex" onClick={onBack}>
                                 <ArrowLeft className="h-6 w-6 stroke-[3px]" />
                             </Button>
                         ) : (
                             <Link href="/home">
-                                <Button variant="ghost" size="icon" className="h-10 w-10 text-gray-700 hover:bg-gray-200/50 rounded-full font-bold">
+                                <Button variant="ghost" size="icon" className="h-10 w-10 text-gray-700 hover:bg-gray-200/50 rounded-full font-bold hidden md:flex">
                                     <ArrowLeft className="h-6 w-6 stroke-[3px]" />
                                 </Button>
                             </Link>
@@ -349,7 +352,7 @@ function ChatContent({ preselectedChatId, preselectedStartWith, onBack }: ChatPa
                             {/* Show Temp Conversation if active and not in list yet */}
                             {tempConversation && !conversations.find(c => c.chatId === tempConversation.chatId) && (
                                 <div
-                                    onClick={() => setSelectedChatId(tempConversation.chatId)}
+                                    onClick={() => router.push(`/chat?id=${tempConversation.chatId}`)}
                                     className={`flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-xl cursor-pointer transition-all duration-200 group
                                         ${selectedChatId === tempConversation.chatId
                                             ? 'bg-gradient-to-r from-orange-50 to-orange-100/50 border-l-4 border-orange-500 shadow-sm'
@@ -372,7 +375,7 @@ function ChatContent({ preselectedChatId, preselectedStartWith, onBack }: ChatPa
                             {conversations.map(conv => (
                                 <div
                                     key={conv.chatId}
-                                    onClick={() => setSelectedChatId(conv.chatId)}
+                                    onClick={() => router.push(`/chat?id=${conv.chatId}`)}
                                     className={`flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-xl cursor-pointer transition-all duration-200 group
                                         ${selectedChatId === conv.chatId
                                             ? 'bg-gradient-to-r from-orange-50 to-orange-100/50 border-l-4 border-orange-500 shadow-sm'
@@ -412,7 +415,7 @@ function ChatContent({ preselectedChatId, preselectedStartWith, onBack }: ChatPa
                         {/* Background Pattern */}
                         <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
                             style={{
-                                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+                                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
                             }}
                         />
 
@@ -421,7 +424,7 @@ function ChatContent({ preselectedChatId, preselectedStartWith, onBack }: ChatPa
                         <div className="h-16 md:h-20 shrink-0 border-b border-gray-100 flex items-center justify-between px-4 md:px-6 bg-white/90 backdrop-blur-md sticky top-0 z-20 shadow-sm">
                             <div className="flex items-center gap-3">
                                 {/* Back Button inside Chat Header for Mobile - Made more visible */}
-                                <Button variant="ghost" size="icon" className="md:hidden -ml-2 text-gray-800 hover:bg-gray-100 rounded-full" onClick={() => setSelectedChatId(null)}>
+                                <Button variant="ghost" size="icon" className="md:hidden -ml-2 text-gray-800 hover:bg-gray-100 rounded-full" onClick={() => router.push('/chat')}>
                                     <ArrowLeft className="h-6 w-6 stroke-[3px]" />
                                 </Button>
                                 <Avatar className="h-8 w-8 md:h-10 md:w-10 border-2 border-gray-50">
@@ -585,7 +588,7 @@ function ChatContent({ preselectedChatId, preselectedStartWith, onBack }: ChatPa
                         targetUid={activeConversation.withUser.uid}
                         onReportSubmitted={() => {
                             toast.success("User reported");
-                            setSelectedChatId(null); // Close chat as per requirement "chat with that person will disappear"
+                            router.push('/chat'); // Close chat as per requirement "chat with that person will disappear"
                         }}
                     />
                     <ConfirmModal
