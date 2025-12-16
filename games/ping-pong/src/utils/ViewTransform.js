@@ -93,4 +93,69 @@ export default class ViewTransform {
         // Apply global scale to the base sprite scale
         return (baseScale * this.scale) + ((z * this.scale) / scaleFactor);
     }
+
+    /**
+     * Transform local coordinates to network coordinates.
+     * If I am Role B, my local "Bottom" (A-view) coordinates must be inverted 
+     * to represent "Top" (B-view) coordinates for the server/opponent.
+     * 
+     * @param {object} state - {x, y, vx, vy} 
+     * @param {string} role - My Role ('A' or 'B')
+     */
+    toNetwork(state, role) {
+        if (role === 'B') {
+            // Invert X and Y for Role B to normalize to "Server Space"
+            // If I am at Bottom (y=200), Server sees me at Top (y=-200)
+            return {
+                x: -state.x, // Flip X (Left becomes Right)
+                y: -state.y, // Flip Y (Bottom becomes Top)
+                vx: -state.vx,
+                vy: -state.vy,
+                z: state.z,    // Z is invariant (height is height)
+                vz: state.vz,  // VZ is invariant (up is up)
+                spin: state.spin // Spin direction might need flip?
+                // If I brush "Forward" (Topspin), ball goes away.
+                // Opponent sees ball coming "Forward" (Topspin).
+                // Spin is rotational. 
+                // Clockwise from Top? 
+                // Let's assume spin is relative to "Forward" motion, so it might not need flip if logic handles "Relative to Bat".
+                // But if spin is "absolute angular velocity around X axis":
+                // Topspin (+X rot) -> Inverted Y (+Y) -> Inverted Frame?
+                // Simpler: Just sync spin value, physics will handle it relative to velocity.
+                // WAIT: If I hit "Forward" (Away), vy is negative? No, Away is +Y or -Y?
+                // Local A: Away is Negative Y (Up).
+                // Local B (Sim A): Away is Negative Y (Up).
+                // Network B: Away is Positive Y (Down).
+                // So VY is flipped. (-vy).
+            };
+        }
+        return state; // Role A is canonical
+    }
+
+    /**
+     * Transform network coordinates to local coordinates.
+     * If I am Role B, I receive "Opponent (A) at Top (y=-200)"?
+     * No, Opponent is Role A. They send Role A coords (y=200, Bottom).
+     * If I am B (Simulating A), I need to see Opponent at My Top (y=-200).
+     * 
+     * @param {object} state - {x, y, vx, vy}
+     * @param {string} localRole - My Role
+     */
+    fromNetwork(state, localRole) {
+        if (localRole === 'B') {
+            // I am B. Opponent is A (sent y=200).
+            // I want to see Opponent at Top (y=-200).
+            // So I must invert.
+            return {
+                x: -state.x,
+                y: -state.y,
+                vx: -state.vx,
+                vy: -state.vy, // If A hit "Up" (Away, -vy), I see it coming "Down" (Towards, +vy).
+                z: state.z || 0,
+                vz: state.vz || 0, // VZ invariant
+                spin: state.spin || 0
+            };
+        }
+        return state;
+    }
 }

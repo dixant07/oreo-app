@@ -19,10 +19,7 @@ export default class GameScene extends Phaser.Scene {
         this.role = null; // 'A' or 'B'
         this.network = new NetworkManager(this);
         this.pingPongConnection = null;
-        // Game state
-        this.role = null; // 'A' or 'B'
-        this.network = new NetworkManager(this);
-        this.pingPongConnection = null;
+
         this.gameStarted = false;
         this.gameOver = false; // New flag for win state
 
@@ -359,8 +356,17 @@ export default class GameScene extends Phaser.Scene {
 
         if (this.role) {
             // Role known - customize "You" vs "Opponent"
+            // With Symmetric View:
+            // "You" are ALWAYS on the LEFT (or Default A Position)
+            // "Opponent" is ALWAYS on the RIGHT (or Default B Position)
+
+            // Wait, Scoreboard asks: Name A, Score A.
+            // If I am B:
+            // My Score is scoreB.
+            // Opponent Score is scoreA.
+            // I want "You" (Me) to be Left.
+
             if (this.role === 'A') {
-                // I am A (Red) -> Left is Me (You)
                 leftName = "You";
                 leftColor = 0xff0000;
                 leftScoreVal = this.scoreA;
@@ -369,13 +375,18 @@ export default class GameScene extends Phaser.Scene {
                 rightColor = 0x0000ff;
                 rightScoreVal = this.scoreB;
             } else {
-                // I am B (Blue) -> Left is Me (You)
+                // I am B. 
+                // Locally I play as "Red/Green" (Bottom)? 
+                // If visuals are symmetric, maybe I want "My Color" to be consistent?
+                // For simplicity, let's keep A=Red, B=Blue.
+                // If I am B, I am Blue.
+
                 leftName = "You";
-                leftColor = 0x0000ff; // My Color
+                leftColor = 0x0000ff; // My Color (Blue)
                 leftScoreVal = this.scoreB; // My Score
 
                 rightName = "Opponent";
-                rightColor = 0xff0000; // Opponent Color
+                rightColor = 0xff0000; // Opponent Color (Red)
                 rightScoreVal = this.scoreA; // Opponent Score
             }
         }
@@ -462,7 +473,16 @@ export default class GameScene extends Phaser.Scene {
         });
 
         this.events.on('match_found', (msg) => {
-            this.role = msg.role; // Set local role
+            // Normalize Role: Handle 'host'/'client' from backend or 'A'/'B'
+            // Default to 'B' unless explicitly 'A' or 'host'
+            let normalizedRole = 'B';
+            if (msg.role === 'A' || msg.role === 'host') {
+                normalizedRole = 'A';
+            }
+
+
+
+            this.role = normalizedRole; // Set local role
             this.isInitiator = msg.isInitiator;
             this.updateStatusDisplay('Waiting...');
 
@@ -532,46 +552,29 @@ export default class GameScene extends Phaser.Scene {
     }
 
     handlePointerMove(pointer) {
-        // Calculate World Coordinates based on Role
-        let worldX, worldY;
+        // SYMMETRIC INPUT:
+        // Regardless of role, I control the LOCAL BAT (which is always mapped to batAState visually/logically constant)
+        // Since we simulate as "Player A" (Bottom) always:
 
-        if (this.role === 'A') {
-            // A sees normal view
-            worldX = pointer.x - this.centerX;
-            worldY = pointer.y - this.centerY;
+        let worldX = pointer.x - this.centerX;
+        let worldY = pointer.y - this.centerY;
 
-            // Clamp A to Bottom Side (Positive Y)
-            worldY = Phaser.Math.Clamp(
-                worldY,
-                GameConfig.GAME.BAT_A_Y_MIN,
-                GameConfig.GAME.BAT_A_Y_MAX
-            );
+        // Clamp to Bottom Side (Player A Bounds)
+        worldY = Phaser.Math.Clamp(
+            worldY,
+            GameConfig.GAME.BAT_A_Y_MIN,
+            GameConfig.GAME.BAT_A_Y_MAX
+        );
 
-            // Store previous position for velocity calculation
-            this.batAState.prevX = this.batAState.x;
-            this.batAState.prevY = this.batAState.y;
+        // Store previous position
+        this.batAState.prevX = this.batAState.x;
+        this.batAState.prevY = this.batAState.y;
 
-            this.batAState.x = worldX;
-            this.batAState.y = worldY;
-        } else {
-            // B sees inverted view
-            worldX = this.centerX - pointer.x;
-            worldY = this.centerY - pointer.y;
+        this.batAState.x = worldX;
+        this.batAState.y = worldY;
 
-            // Clamp B to Top Side (Negative Y)
-            worldY = Phaser.Math.Clamp(
-                worldY,
-                GameConfig.GAME.BAT_B_Y_MIN,
-                GameConfig.GAME.BAT_B_Y_MAX
-            );
-
-            // Store previous position for velocity calculation
-            this.batBState.prevX = this.batBState.x;
-            this.batBState.prevY = this.batBState.y;
-
-            this.batBState.x = worldX;
-            this.batBState.y = worldY;
-        }
+        // Note: valid if we are Role A OR Role B.
+        // If Role B, we will transform this state when sending to network.
 
         this.sendBatUpdate();
     }
@@ -653,23 +656,61 @@ export default class GameScene extends Phaser.Scene {
             this.handleScoreChange(this.currentServer);
         }
 
-        // Bat Collisions - Check MY bat collision locally with continuous detection
-        if (this.role === 'A') {
-            this.checkBatCollision(this.batAState, 1, prevBallX, prevBallY, dt);
-        } else {
-            this.checkBatCollision(this.batBState, -1, prevBallX, prevBallY, dt);
-        }
+        // Bat Collisions
+        // In Symmetric Mode, I AM ALWAYS BAT A locally.
+        // So I only check collision with batAState.
+        // Opponent (batB) collision is handled by Opponent's client.
+
+        this.checkBatCollision(this.batAState, 1, prevBallX, prevBallY, dt);
+
+        // Note: We don't check Bat B collision here. We trust the remote client to tell us if they hit it (via RemoteHitEvent).
+        // Or if we wanted to predict: 
+        // this.checkBatCollision(this.batBState, -1, prevBallX, prevBallY, dt);
+        // But for now let's stick to authoritative local hits.
 
         // Bounds/Score - Only Role A (Host) acts as referee
+        // Bounds/Score - Authority
+        // Canonical 'A' is the authority for scoring.
+        // Even if I am B (simulating A), I respect A's score updates.
+        // However, if A disconnects or for prediction, we might want to check.
+        // For now, keep A as referee.
+
+        // Wait, if I am B, my ball logic is inverted locally?
+        // No, I am simulating A perspective.
+        // So Ball > CourtY (Top) -> Goes to Opponent.
+        // If Ball >> CourtY (Out of bounds Top) -> I win? Or Opponent Miss?
+        // If Ball << -CourtY (Points behind Me) -> Opponent Wins.
+
+        // Wait, 'A' perspective:
+        // Me = Bottom (Positive Y?). 
+        // No. Camera 0,0.
+        // A (Bottom) is at Y=200.
+        // Opponent (Top) is at Y=-200.
+        // Net is at 0.
+
+        // If Ball Y > CourtY (240). Ball is BEHIND Me. -> Opponent (B) Scores.
+        // If Ball Y < -CourtY (-240). Ball is BEHIND Opponent. -> I (A) Score.
+
+        // If I am Role A:
+        // Check this logic.
+
         if (this.role === 'A') {
             if (Math.abs(b.y) > GameConfig.GAME.COURT_Y_BOUNDARY) {
                 if (b.y > 0) {
+                    // Ball positive Y (Bottom side) -> Passed A -> B scores
                     this.handleScoreChange('B');
                 } else {
+                    // Ball negative Y (Top side) -> Passed B -> A scores
                     this.handleScoreChange('A');
                 }
             }
         }
+
+        // Note: If I am Role B.
+        // I simulate A perspective.
+        // But I DO NOT run scoring logic authoritatively. I wait for A.
+        // BUT if A sends "Score B", I update scoreB.
+        // Since scoreB is "Me", it works.
     }
 
     updateBatVelocities(dt) {
@@ -938,7 +979,14 @@ export default class GameScene extends Phaser.Scene {
     }
 
     resetBall() {
-        const serveY = (this.currentServer === 'A')
+        // In Symmetric View, "My Side" is always Positive Y (Bottom).
+        // "Opponent Side" is always Negative Y (Top).
+
+        // If I am the server, serve from My Side (Bottom).
+        // If I am NOT the server, serve from Opponent Side (Top).
+        const iAmServer = (this.role === this.currentServer);
+
+        const serveY = iAmServer
             ? GameConfig.GAME.BALL_SERVE_Y_OFFSET
             : -GameConfig.GAME.BALL_SERVE_Y_OFFSET;
 
@@ -959,7 +1007,7 @@ export default class GameScene extends Phaser.Scene {
             this.batAState.x,
             this.batAState.y,
             0,
-            this.role
+            'A' // ALWAYS Render as 'A' (No Flip)
         );
         this.batA.setPosition(posA.x, posA.y);
 
@@ -967,7 +1015,7 @@ export default class GameScene extends Phaser.Scene {
             this.batBState.x,
             this.batBState.y,
             0,
-            this.role
+            'A' // ALWAYS Render as 'A' (No Flip)
         );
         this.batB.setPosition(posB.x, posB.y);
 
@@ -975,7 +1023,7 @@ export default class GameScene extends Phaser.Scene {
             this.ballState.x,
             this.ballState.y,
             this.ballState.z,
-            this.role
+            'A' // ALWAYS Render as 'A' (No Flip)
         );
         this.ball.setPosition(posBall.x, posBall.y);
 
@@ -990,37 +1038,68 @@ export default class GameScene extends Phaser.Scene {
 
     sendBatUpdate() {
         if (this.pingPongConnection) {
-            const myBatState = (this.role === 'A') ? this.batAState : this.batBState;
+            // I am explicitly controlling batAState locally.
+            // I need to transform this to "Network Coordinates" based on my Role.
+
+            const myState = this.batAState;
+            const netState = this.viewTransform.toNetwork(
+                { x: myState.x, y: myState.y, vx: myState.vx, vy: myState.vy },
+                this.role
+            );
+
+
+
             this.pingPongConnection.sendBatUpdate(
                 this.role,
-                myBatState.x,
-                myBatState.y,
-                myBatState.vx,
-                myBatState.vy
+                netState.x,
+                netState.y,
+                netState.vx,
+                netState.vy
             );
         }
     }
 
     sendHitEvent() {
         if (this.pingPongConnection) {
-            this.pingPongConnection.sendHitEvent(this.ballState, this.isServing);
+            // Transform ball state to network coordinates before sending
+            const netBall = this.viewTransform.toNetwork(this.ballState, this.role);
+
+
+
+            this.pingPongConnection.sendHitEvent(netBall, this.isServing);
         }
     }
 
     handleRemoteBat(msg) {
         if (msg.role !== this.role) {
-            const targetBatState = (msg.role === 'A') ? this.batAState : this.batBState;
+            // msg contains Network Coordinates.
+            // Transform to Local Coordinates.
+            // If I am B, I want to see Opponent (A) at Top (y=-200).
+            // Opponent sent A-Coords (y=200). 
+            // ViewTransform.fromNetwork stores logic to flip if I am B.
+
+            // Note: Since I am always 'A' locally, the Opponent is always 'B' (Top Bat).
+            const targetBatState = this.batBState; // ALWAYS Bat B for opponent
+
+            const localState = this.viewTransform.fromNetwork(msg, this.role);
+
+
+
             targetBatState.prevX = targetBatState.x;
             targetBatState.prevY = targetBatState.y;
-            targetBatState.x = msg.x;
-            targetBatState.y = msg.y;
-            if (msg.vx !== undefined) targetBatState.vx = msg.vx;
-            if (msg.vy !== undefined) targetBatState.vy = msg.vy;
+            targetBatState.x = localState.x;
+            targetBatState.y = localState.y;
+            if (msg.vx !== undefined) targetBatState.vx = localState.vx;
+            if (msg.vy !== undefined) targetBatState.vy = localState.vy;
         }
     }
 
     handleRemoteHit(msg) {
-        this.ballState = msg.state;
+        // Transform remote ball state to local
+        this.ballState = this.viewTransform.fromNetwork(msg.state, this.role);
+
+
+
         this.isServing = msg.isServing;
     }
 

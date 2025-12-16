@@ -19,7 +19,7 @@ export const games: Game[] = [
     {
         id: 'ping-pong',
         title: 'PING PONG',
-        category: '2-Player',
+        category: 'Action',
         image: '/ping-pong.png',
         route: '/video/game',
         isAvailable: true,
@@ -80,5 +80,4 @@ export const categories = [
     'Strategy',
     'Puzzle',
     'Action',
-
 ];
