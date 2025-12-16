@@ -55,7 +55,7 @@ export class GameConnection {
             if (event.candidate) {
                 console.log('[GameConnection] ICE candidate generated:', event.candidate.type, event.candidate.candidate.substring(0, 50) + '...');
                 const payload = {
-                    candidate: event.candidate,
+                    candidate: event.candidate.toJSON(), // Serialize to JSON to avoid DataCloneError in postMessage
                     to: this.opponentId
                 };
                 if (this.opponentUid) payload.targetUid = this.opponentUid;
