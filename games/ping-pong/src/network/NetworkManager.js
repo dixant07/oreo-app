@@ -1,4 +1,4 @@
-import { CONFIG } from '../config.js';
+import { GameConfig } from '../config/GameConfig.js';
 import { io } from 'socket.io-client';
 import { GameConnection } from './GameConnection.js';
 
@@ -11,7 +11,7 @@ export class NetworkManager {
     constructor(scene) {
         this.scene = scene;
         this.socket = null;
-        this.userId = CONFIG.USER_ID; // Use ID from config
+        this.userId = GameConfig.USER_ID; // Use ID from config
         this.roomId = null;
         this.role = null; // 'A' or 'B'
         this.opponentId = null;
@@ -39,14 +39,14 @@ export class NetworkManager {
         return new Promise((resolve, reject) => {
             try {
                 // Use userId from config
-                this.userId = CONFIG.USER_ID;
+                this.userId = GameConfig.USER_ID;
 
                 if (!this.userId) {
                     console.warn("No user ID found. Connection might fail.");
                 }
 
                 // Check for embedded mode
-                if (CONFIG.MATCH_DATA && CONFIG.MATCH_DATA.mode === 'embedded') {
+                if (GameConfig.MATCH_DATA && GameConfig.MATCH_DATA.mode === 'embedded') {
                     console.log('[NetworkManager] Starting in EMBEDDED mode. Skipping direct socket connection.');
                     this.isEmbedded = true;
                     this.isSignalingConnected = true; // Virtual connection via parent
@@ -59,12 +59,12 @@ export class NetworkManager {
                     return;
                 }
 
-                this.socket = io(CONFIG.NETWORK.SERVER_URL, {
+                this.socket = io(GameConfig.NETWORK.SERVER_URL, {
                     auth: {
                         userId: this.userId,
                         token: this.userId
                     },
-                    path: CONFIG.NETWORK.SOCKET_PATH,
+                    path: GameConfig.NETWORK.SOCKET_PATH,
                     transports: ['websocket', 'polling']
                 });
 
