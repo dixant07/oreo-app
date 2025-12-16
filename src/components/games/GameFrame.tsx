@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
 interface GameFrameProps {
@@ -8,7 +8,7 @@ interface GameFrameProps {
     className?: string;
 }
 
-export function GameFrame({ gameUrl, className }: GameFrameProps) {
+export const GameFrame = forwardRef<HTMLIFrameElement, GameFrameProps>(({ gameUrl, className }, ref) => {
     const [isLoading, setIsLoading] = useState(true);
     const url = gameUrl || process.env.NEXT_PUBLIC_GAMES_BASE_URL || "http://localhost:3000";
 
@@ -35,6 +35,7 @@ export function GameFrame({ gameUrl, className }: GameFrameProps) {
                 </div>
             )}
             <iframe
+                ref={ref}
                 src={url}
                 className="w-full h-full border-none z-20 relative transition-opacity duration-500"
                 title="Game Window"
@@ -43,7 +44,9 @@ export function GameFrame({ gameUrl, className }: GameFrameProps) {
             />
         </div>
     );
-}
+});
+
+GameFrame.displayName = 'GameFrame';
 
 
 

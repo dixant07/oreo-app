@@ -4,7 +4,7 @@ import { GameConnection } from './GameConnection.js';
 
 /**
  * NetworkManager - Main network coordinator
- * Manages Socket.IO connection, matchmaking, and coordinates WebRTC connections
+ * Manages Socket.IO connection (or embedded messaging), matchmaking, and coordinates WebRTC connections
  * This is game-agnostic and handles only matchmaking and connection coordination
  */
 export class NetworkManager {
@@ -23,17 +23,17 @@ export class NetworkManager {
 
         // Connection states
         this.isSignalingConnected = false;
+        this.isEmbedded = false;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
 
         // Buffer for pending offer if user hasn't clicked connect yet
         this.pendingOffer = null;
-        // [FIX] Add buffer for pending ICE candidates
         this.pendingCandidates = [];
     }
 
     /**
-     * Connect to signaling server and setup matchmaking
+     * Connect to signaling server (or setup embedded listeners)
      */
     async connect() {
         return new Promise((resolve, reject) => {
@@ -45,14 +45,26 @@ export class NetworkManager {
                     console.warn("No user ID found. Connection might fail.");
                 }
 
+                // Check for embedded mode
+                if (CONFIG.MATCH_DATA && CONFIG.MATCH_DATA.mode === 'embedded') {
+                    console.log('[NetworkManager] Starting in EMBEDDED mode. Skipping direct socket connection.');
+                    this.isEmbedded = true;
+                    this.isSignalingConnected = true; // Virtual connection via parent
+                    this.setupEmbeddedHandlers();
+
+                    // In embedded mode, we might receive ICE servers from parent via message
+                    // But assume parent handles that negotiation or passes them in initial config if possible.
+                    // We'll resolve immediately.
+                    resolve();
+                    return;
+                }
+
                 this.socket = io(CONFIG.NETWORK.SERVER_URL, {
                     auth: {
                         userId: this.userId,
-                        // Passing userId as token if server expects 'token' field, 
-                        // though ideally server should look for userId if no token:
                         token: this.userId
                     },
-                    path: CONFIG.NETWORK.SOCKET_PATH,  // Must match server's SOCKET_IO_PATH
+                    path: CONFIG.NETWORK.SOCKET_PATH,
                     transports: ['websocket', 'polling']
                 });
 
@@ -61,7 +73,6 @@ export class NetworkManager {
                     this.isSignalingConnected = true;
                     this.reconnectAttempts = 0;
 
-                    // Request ICE servers for embedded mode
                     console.log('[NetworkManager] Requesting ICE servers...');
                     this.socket.emit('get_ice_servers');
 
@@ -103,16 +114,73 @@ export class NetworkManager {
     }
 
     /**
-     * Setup WebRTC signaling event handlers
+     * Handler for Embedded Mode messages from Parent Window
+     */
+    setupEmbeddedHandlers() {
+        window.addEventListener('message', (event) => {
+            // Security check: in production, verify event.origin
+            const { type, payload } = event.data;
+
+            if (type === 'game_signal_offer') {
+                if (this.gameConnection) {
+                    this.gameConnection.handleOffer(payload);
+                } else {
+                    console.log('[NetworkManager] Buffering offer (embedded)...');
+                    this.pendingOffer = payload;
+                }
+            } else if (type === 'game_signal_answer') {
+                if (this.gameConnection) {
+                    this.gameConnection.handleAnswer(payload);
+                }
+            } else if (type === 'game_signal_candidate') {
+                if (this.gameConnection) {
+                    this.gameConnection.handleCandidate(payload);
+                } else {
+                    console.log('[NetworkManager] Buffering candidate (embedded)...');
+                    this.pendingCandidates.push(payload);
+                }
+            } else if (type === 'ice_servers_config') {
+                console.log('[NetworkManager] Received ICE servers from parent:', payload);
+                this.iceServers = payload || { game: [] };
+            }
+        });
+    }
+
+    /**
+     * Wrapper to emit events either to Socket or Parent Window
+     */
+    emitToServer(event, payload) {
+        if (this.isEmbedded) {
+            window.parent.postMessage({
+                type: 'game_signal_emit',
+                event: event,
+                payload: payload
+            }, '*');
+        } else if (this.socket && this.socket.connected) {
+            this.socket.emit(event, payload);
+        } else {
+            console.warn(`[NetworkManager] Cannot emit '${event}': Not connected.`);
+        }
+    }
+
+    /**
+     * Alias for emitToServer to be compatible with GameConnection which expects socket.emit
+     */
+    emit(event, payload) {
+        this.emitToServer(event, payload);
+    }
+
+    /**
+     * Setup WebRTC signaling event handlers (Socket Mode)
      */
     setupSignalingHandlers() {
-        // Listen for ICE servers configuration (for embedded mode)
+        if (!this.socket) return;
+
         this.socket.on('ice_servers_config', (data) => {
             console.log('[NetworkManager] Received ICE servers config:', data.iceServers);
             this.iceServers = data.iceServers || { game: [] };
         });
 
-        // Game connection signaling
         this.socket.on('offer', (data) => {
             if (this.gameConnection) {
                 this.gameConnection.handleOffer(data);
@@ -132,7 +200,6 @@ export class NetworkManager {
             if (this.gameConnection) {
                 this.gameConnection.handleCandidate(data);
             } else {
-                // [FIX] Buffer candidates if connection isn't ready yet
                 console.log('[NetworkManager] Received candidate before game connection initialized. Buffering...');
                 this.pendingCandidates.push(data);
             }
@@ -152,9 +219,6 @@ export class NetworkManager {
         // Use ICE servers from message, or fall back to pre-fetched ones
         if (msg.iceServers && (msg.iceServers.game?.length > 0 || msg.iceServers.video?.length > 0)) {
             this.iceServers = msg.iceServers;
-        } else if (!this.iceServers || !this.iceServers.game || this.iceServers.game.length === 0) {
-            console.log('[NetworkManager] No ICE servers in match data, using pre-fetched or defaults');
-            // Keep existing pre-fetched iceServers, or use empty fallback
         }
 
         console.log('=== MATCH FOUND ===');
@@ -162,8 +226,6 @@ export class NetworkManager {
         console.log(`Role: ${this.role}`);
         console.log(`Initiator: ${this.isInitiator}`);
         console.log(`Opponent ID: ${this.opponentId}`);
-        console.log(`Opponent UID: ${this.opponentUid}`);
-        console.log(`Game ICE Servers:`, this.iceServers.game);
 
         // Emit match found event with all connection config
         this.scene.events.emit('match_found', {
@@ -174,13 +236,10 @@ export class NetworkManager {
             isInitiator: this.isInitiator,
             iceServers: this.iceServers
         });
-
-        // Note: Game connection is now initialized manually via connectToGame()
     }
 
     /**
      * Connect to game WebRTC connection
-     * Should be called after match_found when user is ready
      */
     async connectToGame() {
         if (!this.roomId || !this.opponentId) {
@@ -188,14 +247,21 @@ export class NetworkManager {
             return;
         }
 
-        // Ensure ICE servers are available before initializing
-        if ((!this.iceServers || !this.iceServers.game || this.iceServers.game.length === 0) && this.socket) {
-            console.log('[NetworkManager] No ICE servers available, waiting for config...');
-            try {
-                // Wait up to 5 seconds for ICE servers
-                await this.waitForIceServers(5000);
-            } catch (err) {
-                console.warn('[NetworkManager] Timeout waiting for ICE servers, proceeding with defaults (connection may fail in production)');
+        // Wait for ICE servers if needed
+        if ((!this.iceServers || !this.iceServers.game || this.iceServers.game.length === 0)) {
+            if (this.socket) {
+                try {
+                    await this.waitForIceServers(5000);
+                } catch (err) {
+                    console.warn('[NetworkManager] Timeout waiting for ICE servers (Socket Mode)');
+                }
+            } else if (this.isEmbedded) {
+                // In embedded mode, we hope parent sent them or will send them. 
+                // We won't block indefinitely here, maybe just proceed or request them?
+                // Let's request them from parent
+                window.parent.postMessage({ type: 'request_ice_servers' }, '*');
+                // Wait a bit? Or just proceed.
+                console.log('[NetworkManager] Requesting ICE servers from parent (Embedded Mode)...');
             }
         }
 
@@ -208,7 +274,7 @@ export class NetworkManager {
             this.pendingOffer = null;
         }
 
-        // 2. [FIX] Process pending candidates AFTER offer is handled
+        // 2. Process pending candidates
         if (this.pendingCandidates.length > 0) {
             console.log(`[NetworkManager] Processing ${this.pendingCandidates.length} buffered ICE candidates...`);
             for (const candidateData of this.pendingCandidates) {
@@ -218,13 +284,8 @@ export class NetworkManager {
         }
     }
 
-    /**
-     * Wait for ICE servers configuration
-     * @param {number} timeoutMs - Timeout in milliseconds
-     */
     async waitForIceServers(timeoutMs = 5000) {
         return new Promise((resolve, reject) => {
-            // Check if already available
             if (this.iceServers && this.iceServers.game && this.iceServers.game.length > 0) {
                 resolve(this.iceServers);
                 return;
@@ -237,24 +298,17 @@ export class NetworkManager {
 
             const handler = (data) => {
                 clearTimeout(timeout);
-                // Listener already updates this.iceServers in setupSignalingHandlers
-                // but we need to wait for it to happen or do it here. 
-                // The existing listener runs first.
                 resolve(data.iceServers);
             };
 
             this.socket.once('ice_servers_config', handler);
-
-            // Re-request just in case
             this.socket.emit('get_ice_servers');
         });
     }
 
-    /**
-     * Initialize game WebRTC connection
-     */
     async initializeGameConnection() {
-        this.gameConnection = new GameConnection(this.socket, this.scene.events);
+        // Pass 'this' (NetworkManager) to GameConnection so it can call emitToServer
+        this.gameConnection = new GameConnection(this, this.scene.events);
 
         await this.gameConnection.initialize({
             isInitiator: this.isInitiator,
@@ -265,33 +319,26 @@ export class NetworkManager {
         });
     }
 
-    /**
-     * Find a match (matchmaking)
-     */
     async findMatch(preferences = {}) {
+        if (this.isEmbedded) {
+            console.warn('[NetworkManager] findMatch called in embedded mode - ignoring (Parent should handle this)');
+            return;
+        }
         if (this.socket && this.isSignalingConnected) {
             console.log('[NetworkManager] Joining matchmaking queue...');
             this.socket.emit('join_queue', {
                 mode: 'random',
                 preferences: preferences
             });
-        } else {
-            console.error("[NetworkManager] Cannot find match: Not connected to signaling server");
         }
     }
 
-    /**
-     * Disconnect all connections
-     */
     disconnect() {
         console.log('[NetworkManager] Disconnecting all connections...');
         if (this.gameConnection) this.gameConnection.close();
         if (this.socket) this.socket.disconnect();
     }
 
-    /**
-     * Getters for connection state
-     */
     get isConnected() {
         return this.gameConnection ? this.gameConnection.isConnected : false;
     }

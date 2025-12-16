@@ -48,6 +48,7 @@ function VideoGameContent() {
 
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
 
     const [status, setStatus] = useState("Waiting for connection...");
     const [mountTime] = useState(Date.now());
@@ -71,6 +72,62 @@ function VideoGameContent() {
     });
 
     const { opponent } = useCurrentOpponent();
+
+    // Bridge: NetworkManager -> Iframe
+    useEffect(() => {
+        if (!networkManager) return;
+
+        const forwardToGame = (type: string, payload: any) => {
+            if (iframeRef.current && iframeRef.current.contentWindow) {
+                iframeRef.current.contentWindow.postMessage({ type, payload }, '*');
+            }
+        };
+
+        const handleGameOffer = (data: any) => forwardToGame('game_signal_offer', data);
+        const handleGameAnswer = (data: any) => forwardToGame('game_signal_answer', data);
+        const handleGameCandidate = (data: any) => forwardToGame('game_signal_candidate', data);
+        const handleSessionEstablished = (data: any) => {
+            /* Optional: notify game that connection is final on server */
+        };
+
+        const unsubs = [
+            networkManager.on('game_signal_offer', handleGameOffer),
+            networkManager.on('game_signal_answer', handleGameAnswer),
+            networkManager.on('game_signal_candidate', handleGameCandidate),
+            networkManager.on('session_established', handleSessionEstablished)
+        ];
+
+        return () => {
+            unsubs.forEach(u => u());
+        };
+    }, [networkManager]);
+
+    // Bridge: Iframe -> NetworkManager
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            // Security: In prod, check event.origin === GAME_BASE_URL
+            const { type, event: signalEvent, payload } = event.data;
+
+            if (type === 'game_signal_emit') {
+                if (networkManager) {
+                    networkManager.sendGameSignal(signalEvent, payload);
+                }
+            } else if (type === 'request_ice_servers') {
+                if (networkManager && iframeRef.current && iframeRef.current.contentWindow) {
+                    // Send current ICE servers to iframe
+                    iframeRef.current.contentWindow.postMessage({
+                        type: 'ice_servers_config',
+                        payload: networkManager.iceServers
+                    }, '*');
+                }
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [networkManager]);
+
+
 
     const handleSendMessage = (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -347,7 +404,7 @@ function VideoGameContent() {
                     {/* Game Content */}
                     <div className="flex-1 relative bg-white w-full h-full">
                         {showGame ? (
-                            <GameFrame gameUrl={gameUrl} />
+                            <GameFrame ref={iframeRef} gameUrl={gameUrl} />
                         ) : (
                             <div className="h-full w-full">
                                 <GameList

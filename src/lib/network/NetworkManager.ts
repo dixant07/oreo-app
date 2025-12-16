@@ -144,6 +144,7 @@ export class NetworkManager {
     setupSignalingHandlers() {
         if (!this.socket) return;
 
+        // Video Signaling
         this.socket.on('video-offer', (data) => {
             if (this.videoConnection) {
                 this.videoConnection.handleOffer(data);
@@ -161,6 +162,39 @@ export class NetworkManager {
                 this.videoConnection.handleCandidate(data);
             }
         });
+
+        // Game Signaling (Relay to Embedded Game)
+        this.socket.on('offer', (data) => {
+            console.log('[NetworkManager] Received GAME offer. Relaying to app...');
+            this.emit('game_signal_offer', data);
+        });
+
+        this.socket.on('answer', (data) => {
+            console.log('[NetworkManager] Received GAME answer. Relaying to app...');
+            this.emit('game_signal_answer', data);
+        });
+
+        this.socket.on('ice-candidate', (data) => {
+            // Check if this is for game (usually structure differentiates, or we assume if not handled by video)
+            // Architecture: Video uses 'video-ice-candidate'. Game uses 'ice-candidate'.
+            console.log('[NetworkManager] Received GAME candidate. Relaying to app...');
+            this.emit('game_signal_candidate', data);
+        });
+
+        // Session Established
+        this.socket.on('session_established', (data) => {
+            console.log('[NetworkManager] Session Established Event', data);
+            this.emit('session_established', data);
+        });
+    }
+
+    sendGameSignal(event: string, payload: any) {
+        if (this.socket && this.isSignalingConnected) {
+            console.log(`[NetworkManager] Sending GAME signal: ${event}`, payload);
+            this.socket.emit(event, payload);
+        } else {
+            console.warn('[NetworkManager] Cannot send game signal - disconnected');
+        }
     }
 
     async handleMatchFound(msg: MatchFoundData) {
