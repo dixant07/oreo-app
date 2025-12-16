@@ -1,4 +1,4 @@
-import { GameConfig } from '../config/GameConfig.js';
+import GameConfig from '../config/GameConfig.js';
 import { io } from 'socket.io-client';
 import { GameConnection } from './GameConnection.js';
 
