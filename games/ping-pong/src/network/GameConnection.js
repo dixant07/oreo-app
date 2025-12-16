@@ -55,7 +55,7 @@ export class GameConnection {
             if (event.candidate) {
                 console.log('[GameConnection] ICE candidate generated:', event.candidate.type, event.candidate.candidate.substring(0, 50) + '...');
                 const payload = {
-                    candidate: event.candidate,
+                    candidate: event.candidate.toJSON(), // Serialize to JSON to avoid DataCloneError in postMessage
                     to: this.opponentId
                 };
                 if (this.opponentUid) payload.targetUid = this.opponentUid;
@@ -283,13 +283,15 @@ export class GameConnection {
      */
     async handleCandidate(data) {
         try {
-            if (this.peerConnection) {
+            // [Safety Check] Ensure PC exists
+            if (this.peerConnection && this.peerConnection.signalingState !== 'closed') {
                 await this.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
             }
         } catch (err) {
             console.error('[GameConnection] Error handling ICE candidate:', err);
         }
     }
+
 
     /**
      * Handle connection failure
