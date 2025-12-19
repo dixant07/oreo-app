@@ -26,19 +26,19 @@ const GameConfig = {
     // PHYSICS SETTINGS
     // ============================================
     PHYSICS: {
-        GRAVITY: 980,                    // Downward acceleration for ball
-        BOUNCE_DAMPING: 0.85,            // Energy retention on bounce (0-1)
+        GRAVITY: 400,                    // Even lower gravity for more hang time and slower movement
+        BOUNCE_DAMPING: 1.0,            // Perfect elastic bounce as requested
         FRICTION: 0.98,                  // Horizontal friction on bounce
-        MAX_SPEED: 300,                  // Maximum ball velocity
+        MAX_SPEED: 600,                  // Lower speed cap for arcade feel
         SERVE_BOUNCE_IMPULSE: 300,       // Minimum bounce height during serve
         MIN_BOUNCE_VELOCITY: 50,         // Minimum velocity to continue bouncing
         MIN_STUCK_VELOCITY: 10,          // Velocity threshold for stuck ball detection
 
         // Bat collision
-        BAT_COLLISION_RADIUS: 30,        // Collision detection radius for bat
         BAT_MIN_HIT_VELOCITY: 250,       // Minimum velocity on bat hit (increased for guaranteed reach)
         BAT_HIT_VELOCITY_MULTIPLIER: 1.8, // Horizontal velocity transfer on hit
-        BAT_HIT_Z_IMPULSE: 350,          // Vertical impulse on bat hit (increased for better arc)
+        BAT_SPEED_TO_DISTANCE_FACTOR: 1.5, // How bat speed maps to ball forward velocity
+        BAT_HIT_Z_IMPULSE: 350,          // Vertical impulse on bat hit (unused now)
         MAX_BALL_HEIGHT_FOR_HIT: 1000,   // Maximum ball height (z) for collision (effectively unlimited)
 
         // Elastic collision - bat velocity transfer
@@ -46,7 +46,7 @@ const GameConfig = {
         BAT_VELOCITY_SMOOTHING: 0.3,     // Velocity smoothing factor for tracking
 
         // Spin mechanics
-        SPIN_ENABLED: false,              // Enable spin mechanics
+        SPIN_ENABLED: true,              // Enable spin mechanics
         SPIN_MULTIPLIER: 0.5,            // How much bat velocity affects spin
         TOPSPIN_GRAVITY_MULTIPLIER: 1.3, // Gravity multiplier for topspin
         BACKSPIN_GRAVITY_MULTIPLIER: 0.6, // Gravity multiplier for backspin
@@ -55,6 +55,7 @@ const GameConfig = {
         // Trajectory control
         GUARANTEED_REACH_VELOCITY: 280,  // Velocity to guarantee reaching opponent's side
         OPTIMAL_HIT_ANGLE: 15,           // Optimal launch angle in degrees
+        BALL_RADIUS: 10,                 // Logical radius of the ball
     },
 
     // ============================================
@@ -62,10 +63,10 @@ const GameConfig = {
     // ============================================
     GAME: {
         // Game Rules
-        COURT_Y_BOUNDARY: 240,           // Y position for out-of-bounds check (half table length)
+        COURT_Y_BOUNDARY: 600,           // Canonical boundary for authoritative scoring (Way past visible area)
         INITIAL_SERVER: 'A',             // Who serves first
         BALL_SERVE_Y_OFFSET: 150,        // Distance from center for serve placement
-        BALL_SERVE_Z: 50,                // Dropping height for serve
+        BALL_SERVE_Z: 80,               // Slightly lower for better visual alignment with table
         WINNING_SCORE: 6,                // Score required to win the game
 
         // Bat positioning constraints (world coordinates)
@@ -73,6 +74,41 @@ const GameConfig = {
         BAT_A_Y_MAX: 300,                // Player A maximum Y
         BAT_B_Y_MIN: -300,               // Player B minimum Y (top player)
         BAT_B_Y_MAX: -50,                // Player B maximum Y
+
+        // Table Dimensions (World coordinates)
+        TABLE_WIDTH: 300,
+        TABLE_LENGTH: 480,
+
+        // Fall Margins (Outside Region)
+        FALL_MARGIN_X: 20,
+        FALL_MARGIN_Y: 80,               // Increased Y margin to allow fall animation when ball flies past table ends
+
+        // Bat Polygon Vertices (simplified approx of the SVG shape)
+        // Scaled to match BAT_COLLISION_RADIUS roughly
+        // BAT_VERTICES: [
+        //     { x: 0, y: -15 },
+        //     { x: 11, y: -11 },
+        //     { x: 15, y: 0 },
+        //     { x: 11, y: 11 },
+        //     { x: 0, y: 15 },
+        //     { x: -11, y: 11 },
+        //     { x: -15, y: 0 },
+        //     { x: -11, y: -11 }
+        // ]
+        BAT_VERTICES: [{ x: 0, y: -30 },
+        { x: 22, y: -22 },
+        { x: 30, y: 0 },
+        { x: 22, y: 22 },
+        { x: 0, y: 30 },
+        { x: -22, y: 22 },
+        { x: -30, y: 0 },
+        { x: -22, y: -22 }],
+
+        // Smart Aiming / Landing Zone tuning
+        LANDING_ZONE_MARGIN_X: 20,       // Safety margin from table edges in X
+        LANDING_ZONE_MARGIN_Y: 20,       // Safety margin from table ends in Y
+        LANDING_ZONE_MIN_DEPTH: 0.1,     // Minimum % of table depth to cross (past net)
+        LANDING_ZONE_MAX_DEPTH: 0.9      // Maximum % of table depth to reach
     },
 
     // ============================================

@@ -58,8 +58,8 @@ const config = {
     },
     backgroundColor: GameConfig.DISPLAY.BACKGROUND_COLOR,
     physics: {
-        default: 'arcade',
-        arcade: {
+        default: 'matter',
+        matter: {
             gravity: { y: 0 },
             debug: GameConfig.DEBUG.PHYSICS_DEBUG
         }

@@ -112,6 +112,7 @@ export default class GameScene extends Phaser.Scene {
             this.centerY,
             TableTennisConfig.ASSETS.BAT_B
         ).setScale(GameConfig.ASSETS.BAT_SCALE);
+        this.batB.setRotation(Math.PI); // Visual flip for opponent
 
         // Add Ball
         this.ball = this.add.image(
@@ -143,7 +144,60 @@ export default class GameScene extends Phaser.Scene {
             }
         });
 
+        // ========================================
+        // MATTER.JS PHYSICS SETUP
+        // ========================================
+
+        // 1. Table Sensor (Rectangle)
+        // Helps visualize but we use manual range checks for speed/simplicity in 2.5D
+        this.tableBody = this.matter.add.rectangle(
+            this.centerX,
+            this.centerY,
+            GameConfig.GAME.TABLE_WIDTH * this.viewTransform.scale,
+            GameConfig.GAME.TABLE_LENGTH * this.viewTransform.scale,
+            { isStatic: true, isSensor: true, label: 'table' }
+        );
+
+        // 2. Bat Bodies (Polygons)
+        this.batABody = this.matter.add.fromVertices(
+            0, 0,
+            GameConfig.GAME.BAT_VERTICES,
+            { isStatic: false, isSensor: true, label: 'batA' }
+        );
+
+        // Opponent bat body needs to be rotated 180 degrees (PI radians)
+        const verticesB = GameConfig.GAME.BAT_VERTICES.map(v => ({ x: -v.x, y: -v.y }));
+        this.batBBody = this.matter.add.fromVertices(
+            0, 0,
+            verticesB,
+            { isStatic: false, isSensor: true, label: 'batB' }
+        );
+
+        // 3. Ball Body (Circle)
+        this.ballBody = this.matter.add.circle(
+            0, 0,
+            GameConfig.PHYSICS.BALL_RADIUS,
+            { isStatic: false, isSensor: true, label: 'ball' }
+        );
+
+        // Collision Event
+        this.matter.world.on('collisionstart', (event) => {
+            event.pairs.forEach(pair => {
+                const labels = [pair.bodyA.label, pair.bodyB.label];
+                if (labels.includes('ball') && labels.includes('batA')) {
+                    // We ALWAYS control batA locally in our relative world
+                    this.checkBatCollision(this.batAState, 1);
+                }
+            });
+        });
+
+        // Debug Graphics
+        this.debugGraphics = this.add.graphics();
+        this.debugGraphics.setDepth(150);
+
+
         // Start Game Loop logic
+        this.isFalling = false;
         this.resetBall();
 
         // Cleanup on scene shutdown
@@ -540,7 +594,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     update(time, delta) {
-        if (!this.gameStarted) return;
+        if (!this.gameStarted || this.isFalling) return;
 
         const dt = delta / 1000;
 
@@ -552,29 +606,23 @@ export default class GameScene extends Phaser.Scene {
     }
 
     handlePointerMove(pointer) {
-        // SYMMETRIC INPUT:
-        // Regardless of role, I control the LOCAL BAT (which is always mapped to batAState visually/logically constant)
-        // Since we simulate as "Player A" (Bottom) always:
-
+        // RELATIVE INPUT: Everyone is Player A (Bottom) in their own world
         let worldX = pointer.x - this.centerX;
         let worldY = pointer.y - this.centerY;
 
-        // Clamp to Bottom Side (Player A Bounds)
+        // Clamp to Bottom Side
         worldY = Phaser.Math.Clamp(
             worldY,
             GameConfig.GAME.BAT_A_Y_MIN,
             GameConfig.GAME.BAT_A_Y_MAX
         );
 
-        // Store previous position
+        // Store previous position for velocity
         this.batAState.prevX = this.batAState.x;
         this.batAState.prevY = this.batAState.y;
 
         this.batAState.x = worldX;
         this.batAState.y = worldY;
-
-        // Note: valid if we are Role A OR Role B.
-        // If Role B, we will transform this state when sending to network.
 
         this.sendBatUpdate();
     }
@@ -593,22 +641,21 @@ export default class GameScene extends Phaser.Scene {
         // Update bat velocities (smoothed)
         this.updateBatVelocities(dt);
 
-        // Store previous ball position for continuous collision detection
-        const prevBallX = b.x - b.vx * dt;
-        const prevBallY = b.y - b.vy * dt;
-
         // Apply gravity with spin modifier
-        let gravityMultiplier = 1.0;
-        if (GameConfig.PHYSICS.SPIN_ENABLED && b.spin !== 0) {
-            if (b.spin > 0) {
-                // Topspin - more gravity
-                gravityMultiplier = GameConfig.PHYSICS.TOPSPIN_GRAVITY_MULTIPLIER;
-            } else {
-                // Backspin - less gravity
-                gravityMultiplier = GameConfig.PHYSICS.BACKSPIN_GRAVITY_MULTIPLIER;
+        // STATIONARY SERVE: Skip gravity if serving, so ball stays at serve height
+        if (!this.isServing) {
+            let gravityMultiplier = 1.0;
+            if (GameConfig.PHYSICS.SPIN_ENABLED && b.spin !== 0) {
+                if (b.spin > 0) {
+                    // Topspin - more gravity
+                    gravityMultiplier = GameConfig.PHYSICS.TOPSPIN_GRAVITY_MULTIPLIER;
+                } else {
+                    // Backspin - less gravity
+                    gravityMultiplier = GameConfig.PHYSICS.BACKSPIN_GRAVITY_MULTIPLIER;
+                }
             }
+            b.vz -= (GameConfig.PHYSICS.GRAVITY * gravityMultiplier * dt);
         }
-        b.vz -= (GameConfig.PHYSICS.GRAVITY * gravityMultiplier * dt);
 
         // Apply spin decay
         if (b.spin !== 0) {
@@ -623,25 +670,50 @@ export default class GameScene extends Phaser.Scene {
 
         // Ground/Table Bounce
         if (b.z <= 0) {
-            b.z = 0;
-            if (b.vz < 0) {
-                // Play bounce sound if velocity is significant
-                if (Math.abs(b.vz) > 10) {
-                    this.sound.play(TableTennisConfig.ASSETS.TABLE_BOUNCE);
-                }
+            // Check if ball is on the table
+            const onTable = (
+                Math.abs(b.x) <= GameConfig.GAME.TABLE_WIDTH / 2 &&
+                Math.abs(b.y) <= GameConfig.GAME.TABLE_LENGTH / 2
+            );
 
-                b.vz = PhysicsUtils.bounce(b.vz);
-                b.vx = PhysicsUtils.applyFriction(b.vx);
-                b.vy = PhysicsUtils.applyFriction(b.vy);
+            // Outside region check (table boundary + margins)
+            const inOutsideRegion = (
+                Math.abs(b.x) <= (GameConfig.GAME.TABLE_WIDTH / 2 + GameConfig.GAME.FALL_MARGIN_X) &&
+                Math.abs(b.y) <= (GameConfig.GAME.TABLE_LENGTH / 2 + GameConfig.GAME.FALL_MARGIN_Y)
+            );
 
-                if (this.isServing) {
-                    if (b.vz < GameConfig.PHYSICS.SERVE_BOUNCE_IMPULSE) {
-                        b.vz = GameConfig.PHYSICS.SERVE_BOUNCE_IMPULSE;
+            if (onTable) {
+                b.z = 0;
+                if (b.vz < 0) {
+                    // Play bounce sound if velocity is significant
+                    if (Math.abs(b.vz) > 10) {
+                        this.sound.play(TableTennisConfig.ASSETS.TABLE_BOUNCE);
                     }
-                } else {
+
+                    // ELASTIC BOUNCE - Perfect reflection along Z
+                    b.vz = -b.vz * GameConfig.PHYSICS.BOUNCE_DAMPING;
+
+                    // Friction still applies to horizontal movement
+                    b.vx = PhysicsUtils.applyFriction(b.vx);
+                    b.vy = PhysicsUtils.applyFriction(b.vy);
+
+                    // Min bounce threshold (to prevent micro-vibrations if damping was < 1)
                     if (Math.abs(b.vz) < GameConfig.PHYSICS.MIN_BOUNCE_VELOCITY) {
                         b.vz = 0;
                     }
+                }
+            } else if (inOutsideRegion) {
+                // FALL OFF TABLE within the buffer zone
+                // Only start falling if ball is low enough
+                if (b.z < 20) {
+                    this.startFallAnimation();
+                }
+            } else {
+                // Completely outside the region - authoritative score if way past boundary
+                // We removed the b.z < -50 check to ensure the ball flies naturally out of view
+                if (Math.abs(b.y) > GameConfig.GAME.COURT_Y_BOUNDARY && this.role === 'A') {
+                    const winner = (b.y > 0) ? 'B' : 'A';
+                    this.handleScoreChange(winner);
                 }
             }
         }
@@ -657,16 +729,9 @@ export default class GameScene extends Phaser.Scene {
         }
 
         // Bat Collisions
-        // In Symmetric Mode, I AM ALWAYS BAT A locally.
-        // So I only check collision with batAState.
-        // Opponent (batB) collision is handled by Opponent's client.
-
-        this.checkBatCollision(this.batAState, 1, prevBallX, prevBallY, dt);
-
-        // Note: We don't check Bat B collision here. We trust the remote client to tell us if they hit it (via RemoteHitEvent).
-        // Or if we wanted to predict: 
-        // this.checkBatCollision(this.batBState, -1, prevBallX, prevBallY, dt);
-        // But for now let's stick to authoritative local hits.
+        // Matter.js collisionStart handles the triggers now.
+        // But we still need to synchronize Matter bodies to world coordinates.
+        this.syncMatterBodies();
 
         // Bounds/Score - Only Role A (Host) acts as referee
         // Bounds/Score - Authority
@@ -694,7 +759,7 @@ export default class GameScene extends Phaser.Scene {
         // If I am Role A:
         // Check this logic.
 
-        if (this.role === 'A') {
+        if (this.role === 'A' && !this.isFalling) {
             if (Math.abs(b.y) > GameConfig.GAME.COURT_Y_BOUNDARY) {
                 if (b.y > 0) {
                     // Ball positive Y (Bottom side) -> Passed A -> B scores
@@ -740,165 +805,131 @@ export default class GameScene extends Phaser.Scene {
         );
     }
 
-    checkBatCollision(batState, direction, prevBallX, prevBallY, dt) {
-        const b = this.ballState;
-        const now = this.time.now;
+    syncMatterBodies() {
+        if (!this.viewTransform) return;
 
-        // ========================================
-        // COLLISION COOLDOWN - Prevent multiple hits
-        // ========================================
-        if (now - this.lastHitTime < this.COLLISION_COOLDOWN) {
-            return;  // Still in cooldown period, skip collision check
-        }
+        // Sync local Bat A body (Perspective 'A' is always used locally)
+        const posA = this.viewTransform.worldToScreen(this.batAState.x, this.batAState.y, 0, 'A');
+        this.matter.body.setPosition(this.batABody, { x: posA.x, y: posA.y });
 
-        // ========================================
-        // CONTINUOUS COLLISION DETECTION
-        // ========================================
-        // Check both current position AND if ball crossed through bat
+        // Sync Opponent Bat B body
+        const posB = this.viewTransform.worldToScreen(this.batBState.x, this.batBState.y, 0, 'A');
+        this.matter.body.setPosition(this.batBBody, { x: posB.x, y: posB.y });
 
-        // Current distance
-        const currentDist = PhysicsUtils.distance(b.x, b.y, batState.x, batState.y);
-
-        // Distance at previous frame
-        const prevDist = PhysicsUtils.distance(prevBallX, prevBallY, batState.x, batState.y);
-
-        // Check if ball's path intersects with bat's collision circle
-        // Using swept circle collision detection
-        const collisionRadius = GameConfig.PHYSICS.BAT_COLLISION_RADIUS;
-
-        // Method 1: Current position check
-        const currentlyColliding = currentDist < collisionRadius;
-
-        // Method 2: Check if ball crossed through bat (was far, now close on other side)
-        const crossedThrough = this.checkLineSphereIntersection(
-            prevBallX, prevBallY,  // Line start (prev ball pos)
-            b.x, b.y,              // Line end (current ball pos)
-            batState.x, batState.y, // Sphere center (bat pos)
-            collisionRadius        // Sphere radius
-        );
-
-        // Collision detected if either condition is true
-        const hasCollision = currentlyColliding || crossedThrough;
-
-        if (GameConfig.DEBUG.LOG_COLLISIONS) {
-            console.log('Collision check:', {
-                currentDist: currentDist.toFixed(1),
-                prevDist: prevDist.toFixed(1),
-                radius: collisionRadius,
-                currentlyColliding,
-                crossedThrough,
-                hasCollision
-            });
-        }
-
-        if (hasCollision) {
-            // ========================================
-            // COLLISION CONFIRMED - Apply cooldown
-            // ========================================
-            this.lastHitTime = now;
-
-            // Play hit sound
-            this.sound.play(TableTennisConfig.ASSETS.BAT_HIT);
-
-            // Hit!
-            if (this.isServing) {
-                // Only server can hit during serve
-                const isServerA = (this.currentServer === 'A');
-                const isBatA = (this.role === 'A');
-                if (isServerA !== isBatA) return;
-                this.isServing = false;
-            }
-
-            // ========================================
-            // ELASTIC COLLISION - Transfer bat velocity to ball
-            // ========================================
-
-            // Transfer bat's Y velocity (forward/backward motion)
-            const batVyTransfer = batState.vy * GameConfig.PHYSICS.BAT_VELOCITY_TRANSFER;
-            b.vy = -direction * GameConfig.PHYSICS.GUARANTEED_REACH_VELOCITY + batVyTransfer;
-
-            // Transfer bat's X velocity (left/right motion)
-            const batVxTransfer = batState.vx * GameConfig.PHYSICS.BAT_VELOCITY_TRANSFER;
-            const dx = b.x - batState.x;
-            b.vx = dx * GameConfig.PHYSICS.BAT_HIT_VELOCITY_MULTIPLIER + batVxTransfer;
-
-            // Clamp velocities
-            b.vy = Phaser.Math.Clamp(b.vy, -GameConfig.PHYSICS.MAX_SPEED, GameConfig.PHYSICS.MAX_SPEED);
-            b.vx = Phaser.Math.Clamp(b.vx, -GameConfig.PHYSICS.MAX_SPEED, GameConfig.PHYSICS.MAX_SPEED);
-
-            // ========================================
-            // SPIN MECHANICS
-            // ========================================
-            if (GameConfig.PHYSICS.SPIN_ENABLED) {
-                // Vertical bat movement creates spin
-                // Forward movement (away from player) = topspin (positive)
-                // Backward movement (toward player) = backspin (negative)
-                b.spin = -batState.vy * direction * GameConfig.PHYSICS.SPIN_MULTIPLIER;
-
-                if (GameConfig.DEBUG.LOG_COLLISIONS) {
-                    const spinType = b.spin > 0 ? 'topspin' : b.spin < 0 ? 'backspin' : 'none';
-                    console.log('Spin applied:', spinType, b.spin);
-                }
-            }
-
-            // ========================================
-            // VERTICAL IMPULSE - Optimized for table reach
-            // ========================================
-            // Calculate optimal Z impulse for nice arc
-            const optimalAngleRad = GameConfig.PHYSICS.OPTIMAL_HIT_ANGLE * (Math.PI / 180);
-            b.vz = Math.abs(b.vy) * Math.tan(optimalAngleRad);
-
-            // Ensure minimum Z impulse
-            if (b.vz < GameConfig.PHYSICS.BAT_HIT_Z_IMPULSE) {
-                b.vz = GameConfig.PHYSICS.BAT_HIT_Z_IMPULSE;
-            }
-
-            // Send HIT Event to sync opponent
-            this.sendHitEvent();
-
-            if (GameConfig.DEBUG.LOG_COLLISIONS) {
-                console.log('🎯 Bat collision:', {
-                    role: this.role,
-                    direction,
-                    method: currentlyColliding ? 'current' : 'continuous',
-                    batVel: { vx: batState.vx.toFixed(1), vy: batState.vy.toFixed(1) },
-                    ballVel: { vx: b.vx.toFixed(1), vy: b.vy.toFixed(1), vz: b.vz.toFixed(1) },
-                    spin: b.spin.toFixed(2)
-                });
-            }
-        }
+        // Sync Ball body
+        const posBall = this.viewTransform.worldToScreen(this.ballState.x, this.ballState.y, this.ballState.z, 'A');
+        this.matter.body.setPosition(this.ballBody, { x: posBall.x, y: posBall.y });
     }
 
-    // Helper method for continuous collision detection
-    checkLineSphereIntersection(x1, y1, x2, y2, cx, cy, radius) {
-        // Check if line segment (x1,y1) to (x2,y2) intersects circle at (cx,cy) with radius
+    startFallAnimation() {
+        if (this.isFalling) return;
+        this.isFalling = true;
 
-        // Vector from circle center to line start
-        const dx = x1 - cx;
-        const dy = y1 - cy;
+        // Shrink and fade ball
+        this.tweens.add({
+            targets: this.ball,
+            scale: 0,
+            alpha: 0,
+            duration: 800,
+            ease: 'Power2',
+            onComplete: () => {
+                // Award point to whoever hit it last/opponent
+                // If ball went off table, the striker failed.
+                // For simplicity, let's treat it as a point for opponent.
+                const winner = (this.ballState.vy < 0) ? 'A' : 'B';
+                this.handleScoreChange(winner);
 
-        // Line direction vector
-        const lx = x2 - x1;
-        const ly = y2 - y1;
+                // Reset visual state
+                this.ball.setAlpha(1);
+                this.isFalling = false;
+            }
+        });
+    }
 
-        // Coefficients for quadratic equation
-        const a = lx * lx + ly * ly;
-        const b = 2 * (dx * lx + dy * ly);
-        const c = dx * dx + dy * dy - radius * radius;
+    checkBatCollision(batState, direction) {
+        const now = this.time.now;
+        const b = this.ballState;
 
-        // Discriminant
-        const discriminant = b * b - 4 * a * c;
-
-        if (discriminant < 0) {
-            return false;  // No intersection
+        if (now - this.lastHitTime < this.COLLISION_COOLDOWN) {
+            return;
         }
 
-        // Calculate intersection points
-        const t1 = (-b - Math.sqrt(discriminant)) / (2 * a);
-        const t2 = (-b + Math.sqrt(discriminant)) / (2 * a);
+        this.lastHitTime = now;
+        this.sound.play(TableTennisConfig.ASSETS.BAT_HIT);
+        // Hit!
+        if (this.isServing) {
+            const isServerA = (this.currentServer === 'A');
+            const isBatA = (this.role === 'A');
+            if (isServerA !== isBatA) return;
+            this.isServing = false;
+        }
 
-        // Check if intersection is within line segment (t between 0 and 1)
-        return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1);
+        // ========================================
+        // SMART AIMING - Guaranteed In-Bounds
+        // ========================================
+
+        // 1. PROJECTILE MATH: Calculate time until ball hits z=0
+        // Formula: z(t) = z0 + vz0*t - 0.5*g*t^2 = 0
+        // Solving for t: t = (vz0 + sqrt(vz0^2 + 2*g*z0)) / g
+        const g = GameConfig.PHYSICS.GRAVITY;
+        const z0 = Math.max(0, b.z);
+        const vz0 = b.vz;
+
+        // Calculate time to impact
+        let tHit = (vz0 + Math.sqrt(vz0 * vz0 + 2 * g * z0)) / g;
+
+        // Fallback for edge cases (e.g. ball stuck on table)
+        if (isNaN(tHit) || tHit < 0.1) tHit = 0.5;
+
+        // 2. TARGET SELECTION (Opponent's Table Region)
+        const tableL = GameConfig.GAME.TABLE_LENGTH;
+        const tableW = GameConfig.GAME.TABLE_WIDTH;
+        const marginX = GameConfig.GAME.LANDING_ZONE_MARGIN_X;
+        const marginY = GameConfig.GAME.LANDING_ZONE_MARGIN_Y;
+
+        // Y-Targeting (Depth)
+        // Map bat speed to % of opponent's table depth
+        const batSpeed = Math.sqrt(batState.vx * batState.vx + batState.vy * batState.vy);
+        const speedFactor = Math.min(1.0, batSpeed / 500); // Normalize speed
+        const lerpDepth = GameConfig.GAME.LANDING_ZONE_MIN_DEPTH +
+            (GameConfig.GAME.LANDING_ZONE_MAX_DEPTH - GameConfig.GAME.LANDING_ZONE_MIN_DEPTH) * speedFactor;
+
+        // Calculate target Y relative to net (y=0)
+        // Role A (Bottom) hits to Negative Y. Role B (Top) hits to Positive Y.
+        const targetYLocal = (tableL / 2 - marginY) * lerpDepth + marginY;
+        const targetY = -direction * targetYLocal;
+
+        // X-Targeting (Width)
+        // Map hit offset and bat vx to landing X
+        const hitOffsetPct = (b.x - batState.x) / 30; // Normalize offset from bat center
+        const batVxBonus = batState.vx / 200;
+        let targetX = (hitOffsetPct + batVxBonus) * (tableW / 2 - marginX);
+        targetX = Phaser.Math.Clamp(targetX, -(tableW / 2 - marginX), (tableW / 2 - marginX));
+
+        // 3. VELOCITY CALCULATION
+        // vy = (targetY - currentY) / tHit
+        // vx = (targetX - currentX) / tHit
+        b.vy = (targetY - b.y) / tHit;
+        b.vx = (targetX - b.x) / tHit;
+
+        // 4. VERTICAL CONSERVATION: z-velocity will not change on hit
+        // (Handled by keeping b.vz as is)
+
+        this.sendHitEvent();
+        if (GameConfig.PHYSICS.SPIN_ENABLED) {
+            b.spin = -batState.vy * direction * GameConfig.PHYSICS.SPIN_MULTIPLIER;
+        }
+
+        this.sendHitEvent();
+
+        if (GameConfig.DEBUG.LOG_COLLISIONS) {
+            console.log('🎯 Bat collision:', {
+                role: this.role,
+                direction,
+                batVel: { vx: batState.vx.toFixed(1), vy: batState.vy.toFixed(1) },
+                ballVel: { vx: b.vx.toFixed(1), vy: b.vy.toFixed(1), vz: b.vz.toFixed(1) }
+            });
+        }
     }
 
     handleScoreChange(winner) {
@@ -910,17 +941,9 @@ export default class GameScene extends Phaser.Scene {
             this.currentServer = 'B';
         }
         this.isServing = true;
-
-        // Reset ball first
         this.resetBall();
-
-        // Update scoreboard
         this.redrawScoreBoard();
-
-        // Check for Win Condition
         this.checkWinCondition();
-
-        // Send Score Update
         if (this.pingPongConnection) {
             this.pingPongConnection.sendScoreUpdate(this.scoreA, this.scoreB, this.currentServer);
         }
@@ -979,11 +1002,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     resetBall() {
-        // In Symmetric View, "My Side" is always Positive Y (Bottom).
-        // "Opponent Side" is always Negative Y (Top).
-
-        // If I am the server, serve from My Side (Bottom).
-        // If I am NOT the server, serve from Opponent Side (Top).
+        // RELATIVE: Everyone is Player A locally.
         const iAmServer = (this.role === this.currentServer);
 
         const serveY = iAmServer
@@ -997,34 +1016,32 @@ export default class GameScene extends Phaser.Scene {
             vx: 0,
             vy: 0,
             vz: 0,
-            spin: 0  // Reset spin
+            spin: 0
         };
+
+        this.isServing = true;
+
+        // Reset visual state
+        const baseScale = this.viewTransform.calculateDepthScale(
+            this.ballState.z,
+            GameConfig.ASSETS.BALL_BASE_SCALE,
+            GameConfig.ASSETS.BALL_Z_SCALE_FACTOR
+        );
+        this.ball.setScale(baseScale);
+        this.ball.setAlpha(1);
     }
 
     render() {
-        // Position Sprites using ViewTransform
-        const posA = this.viewTransform.worldToScreen(
-            this.batAState.x,
-            this.batAState.y,
-            0,
-            'A' // ALWAYS Render as 'A' (No Flip)
-        );
+        if (!this.viewTransform) return;
+
+        // RELATIVE: Everyone uses perspective 'A' locally
+        const posA = this.viewTransform.worldToScreen(this.batAState.x, this.batAState.y, 0, 'A');
         this.batA.setPosition(posA.x, posA.y);
 
-        const posB = this.viewTransform.worldToScreen(
-            this.batBState.x,
-            this.batBState.y,
-            0,
-            'A' // ALWAYS Render as 'A' (No Flip)
-        );
+        const posB = this.viewTransform.worldToScreen(this.batBState.x, this.batBState.y, 0, 'A');
         this.batB.setPosition(posB.x, posB.y);
 
-        const posBall = this.viewTransform.worldToScreen(
-            this.ballState.x,
-            this.ballState.y,
-            this.ballState.z,
-            'A' // ALWAYS Render as 'A' (No Flip)
-        );
+        const posBall = this.viewTransform.worldToScreen(this.ballState.x, this.ballState.y, this.ballState.z, 'A');
         this.ball.setPosition(posBall.x, posBall.y);
 
         // Scale ball based on depth
@@ -1034,20 +1051,96 @@ export default class GameScene extends Phaser.Scene {
             GameConfig.ASSETS.BALL_Z_SCALE_FACTOR
         );
         this.ball.setScale(scale);
+
+        if (GameConfig.DEBUG.PHYSICS_DEBUG) {
+            this.drawDebug();
+        }
     }
+
+
+    drawDebug() {
+        this.debugGraphics.clear();
+
+        // 1. Draw Table/Court Boundaries (Green)
+        this.debugGraphics.lineStyle(2, 0x00ff00, 0.8);
+
+        // Horizontal boundaries (y = 240 and y = -240)
+        // Since court width isn't explicitly defined for collision (it's implicit in table size), 
+        // let's use a reasonable width for the debug lines.
+        const courtWidth = GameConfig.GAME.TABLE_WIDTH;
+        const courtHeight = GameConfig.GAME.TABLE_LENGTH;
+
+        // Table Rectangle
+        const tableTopLeft = this.viewTransform.worldToScreen(-courtWidth / 2, -courtHeight / 2, 0, 'A');
+        const tableBottomRight = this.viewTransform.worldToScreen(courtWidth / 2, courtHeight / 2, 0, 'A');
+        this.debugGraphics.strokeRect(
+            tableTopLeft.x,
+            tableTopLeft.y,
+            tableBottomRight.x - tableTopLeft.x,
+            tableBottomRight.y - tableTopLeft.y
+        );
+
+        // Outside Region (Margins)
+        this.debugGraphics.lineStyle(1, 0x00ff00, 0.4);
+        const outsideTopLeft = this.viewTransform.worldToScreen(
+            -(courtWidth / 2 + GameConfig.GAME.FALL_MARGIN_X),
+            -(courtHeight / 2 + GameConfig.GAME.FALL_MARGIN_Y),
+            0, 'A'
+        );
+        const outsideBottomRight = this.viewTransform.worldToScreen(
+            (courtWidth / 2 + GameConfig.GAME.FALL_MARGIN_X),
+            (courtHeight / 2 + GameConfig.GAME.FALL_MARGIN_Y),
+            0, 'A'
+        );
+        this.debugGraphics.strokeRect(
+            outsideTopLeft.x,
+            outsideTopLeft.y,
+            outsideBottomRight.x - outsideTopLeft.x,
+            outsideBottomRight.y - outsideTopLeft.y
+        );
+
+        // Net (y = 0)
+        this.debugGraphics.lineStyle(1, 0xffffff, 0.5);
+        const netLeft = this.viewTransform.worldToScreen(-courtWidth / 2, 0, 0, 'A');
+        const netRight = this.viewTransform.worldToScreen(courtWidth / 2, 0, 0, 'A');
+        this.debugGraphics.lineBetween(netLeft.x, netLeft.y, netRight.x, netRight.y);
+
+        // 2. Draw Bat Collision Polygons
+        // Bat A
+        this.debugGraphics.lineStyle(2, 0xff0000, 1);
+        const pointsA = GameConfig.GAME.BAT_VERTICES.map(v => {
+            const worldPos = { x: this.batAState.x + v.x, y: this.batAState.y + v.y };
+            return this.viewTransform.worldToScreen(worldPos.x, worldPos.y, 0, 'A');
+        });
+        this.debugGraphics.strokePoints(pointsA, true);
+
+        // Bat B
+        this.debugGraphics.lineStyle(2, 0x0000ff, 1);
+        const pointsB = GameConfig.GAME.BAT_VERTICES.map(v => {
+            // RELATIVE: Bat B uses flipped vertices in physics, so we flip them here for debug too
+            const worldPos = { x: this.batBState.x - v.x, y: this.batBState.y - v.y };
+            return this.viewTransform.worldToScreen(worldPos.x, worldPos.y, 0, 'A');
+        });
+        this.debugGraphics.strokePoints(pointsB, true);
+
+
+        // 3. Draw Ball logical center (crosshair)
+        const screenBall = this.viewTransform.worldToScreen(this.ballState.x, this.ballState.y, this.ballState.z, 'A');
+        this.debugGraphics.lineStyle(1, 0xffff00, 1);
+        const chSize = 10;
+        this.debugGraphics.lineBetween(screenBall.x - chSize, screenBall.y, screenBall.x + chSize, screenBall.y);
+        this.debugGraphics.lineBetween(screenBall.x, screenBall.y - chSize, screenBall.x, screenBall.y + chSize);
+    }
+
+    // ========================================
+    // NETWORK SYNCHRONIZATION (RELATIVE SYSTEM)
+    // ========================================
 
     sendBatUpdate() {
         if (this.pingPongConnection) {
-            // I am explicitly controlling batAState locally.
-            // I need to transform this to "Network Coordinates" based on my Role.
-
-            const myState = this.batAState;
-            const netState = this.viewTransform.toNetwork(
-                { x: myState.x, y: myState.y, vx: myState.vx, vy: myState.vy },
-                this.role
-            );
-
-
+            // RELATIVE: We always control batAState locally.
+            // Transform for network based on our local role (A or B).
+            const netState = this.viewTransform.toNetwork(this.batAState, this.role);
 
             this.pingPongConnection.sendBatUpdate(
                 this.role,
@@ -1061,45 +1154,29 @@ export default class GameScene extends Phaser.Scene {
 
     sendHitEvent() {
         if (this.pingPongConnection) {
-            // Transform ball state to network coordinates before sending
+            // Transform ball world state for remote client
             const netBall = this.viewTransform.toNetwork(this.ballState, this.role);
-
-
-
             this.pingPongConnection.sendHitEvent(netBall, this.isServing);
         }
     }
 
     handleRemoteBat(msg) {
         if (msg.role !== this.role) {
-            // msg contains Network Coordinates.
-            // Transform to Local Coordinates.
-            // If I am B, I want to see Opponent (A) at Top (y=-200).
-            // Opponent sent A-Coords (y=200). 
-            // ViewTransform.fromNetwork stores logic to flip if I am B.
-
-            // Note: Since I am always 'A' locally, the Opponent is always 'B' (Top Bat).
-            const targetBatState = this.batBState; // ALWAYS Bat B for opponent
-
+            // Transform inbound network coordinates to our local relative world
             const localState = this.viewTransform.fromNetwork(msg, this.role);
 
-
-
-            targetBatState.prevX = targetBatState.x;
-            targetBatState.prevY = targetBatState.y;
-            targetBatState.x = localState.x;
-            targetBatState.y = localState.y;
-            if (msg.vx !== undefined) targetBatState.vx = localState.vx;
-            if (msg.vy !== undefined) targetBatState.vy = localState.vy;
+            this.batBState.prevX = this.batBState.x;
+            this.batBState.prevY = this.batBState.y;
+            this.batBState.x = localState.x;
+            this.batBState.y = localState.y;
+            if (msg.vx !== undefined) this.batBState.vx = localState.vx;
+            if (msg.vy !== undefined) this.batBState.vy = localState.vy;
         }
     }
 
     handleRemoteHit(msg) {
-        // Transform remote ball state to local
+        // Transform remote ball state to local world
         this.ballState = this.viewTransform.fromNetwork(msg.state, this.role);
-
-
-
         this.isServing = msg.isServing;
     }
 
@@ -1108,14 +1185,8 @@ export default class GameScene extends Phaser.Scene {
         this.scoreB = msg.scoreB;
         this.currentServer = msg.currentServer;
         this.isServing = true;
-        this.isServing = true;
         this.resetBall();
-
-        // Update scoreboard
         this.redrawScoreBoard();
-
-        // Check for win on remote update too
         this.checkWinCondition();
-        // this.scoreText.setText(`A: ${this.scoreA}  B: ${this.scoreB}`);
     }
 }
