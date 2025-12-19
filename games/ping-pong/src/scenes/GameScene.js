@@ -26,7 +26,7 @@ export default class GameScene extends Phaser.Scene {
         // UI elements
         this.statusText = null;
         this.connectButton = null;
-        this.scoreGroup = null; // Container for scoreboard elements
+        this.scoreGroup = null;
         this.scoreTextA = null;
         this.scoreTextB = null;
         this.nameTextA = null;
@@ -54,7 +54,6 @@ export default class GameScene extends Phaser.Scene {
     }
 
     preload() {
-        // Load table tennis assets (moved from BootScene)
         this.load.image(
             TableTennisConfig.ASSETS.BALL,
             GameConfig.ASSETS.BALL_SPRITE
@@ -144,9 +143,7 @@ export default class GameScene extends Phaser.Scene {
             }
         });
 
-        // ========================================
-        // MATTER.JS PHYSICS SETUP
-        // ========================================
+        // Matter.js Physics Setup
 
         // 1. Table Sensor (Rectangle)
         // Helps visualize but we use manual range checks for speed/simplicity in 2.5D
@@ -378,12 +375,8 @@ export default class GameScene extends Phaser.Scene {
         const leftX = sb.MARGIN_X + (sb.WIDTH / 2);
         const rightX = width - sb.MARGIN_X - (sb.WIDTH / 2); // Mirror on right
 
-        // For now, let's put A on Left and B on Right by default
-        // When role is assigned, we might swap them so "You" is always on one side, but
-        // requested requirement: Top Left = "You", Top Right = "Opponent"
-
-        // We will handle "You" vs "Opponent" text updates in updateScoreBoard() logic
-        // But physically, let's define Block 1 (Left) and Block 2 (Right) positions
+        // Positions will be set in updateScoreBoardPositions
+        // Block 1 (Left) and Block 2 (Right) positions
 
         // Left Block (Block 1)
         this._pos1 = { x: leftX, y: topY };
@@ -409,17 +402,6 @@ export default class GameScene extends Phaser.Scene {
         let rightColor = 0x0000ff; // Blue for B
 
         if (this.role) {
-            // Role known - customize "You" vs "Opponent"
-            // With Symmetric View:
-            // "You" are ALWAYS on the LEFT (or Default A Position)
-            // "Opponent" is ALWAYS on the RIGHT (or Default B Position)
-
-            // Wait, Scoreboard asks: Name A, Score A.
-            // If I am B:
-            // My Score is scoreB.
-            // Opponent Score is scoreA.
-            // I want "You" (Me) to be Left.
-
             if (this.role === 'A') {
                 leftName = "You";
                 leftColor = 0xff0000;
@@ -429,19 +411,13 @@ export default class GameScene extends Phaser.Scene {
                 rightColor = 0x0000ff;
                 rightScoreVal = this.scoreB;
             } else {
-                // I am B. 
-                // Locally I play as "Red/Green" (Bottom)? 
-                // If visuals are symmetric, maybe I want "My Color" to be consistent?
-                // For simplicity, let's keep A=Red, B=Blue.
-                // If I am B, I am Blue.
-
                 leftName = "You";
-                leftColor = 0x0000ff; // My Color (Blue)
-                leftScoreVal = this.scoreB; // My Score
+                leftColor = 0x0000ff;
+                leftScoreVal = this.scoreB;
 
                 rightName = "Opponent";
-                rightColor = 0xff0000; // Opponent Color (Red)
-                rightScoreVal = this.scoreA; // Opponent Score
+                rightColor = 0xff0000;
+                rightScoreVal = this.scoreA;
             }
         }
 
@@ -733,49 +709,15 @@ export default class GameScene extends Phaser.Scene {
         // But we still need to synchronize Matter bodies to world coordinates.
         this.syncMatterBodies();
 
-        // Bounds/Score - Only Role A (Host) acts as referee
-        // Bounds/Score - Authority
-        // Canonical 'A' is the authority for scoring.
-        // Even if I am B (simulating A), I respect A's score updates.
-        // However, if A disconnects or for prediction, we might want to check.
-        // For now, keep A as referee.
-
-        // Wait, if I am B, my ball logic is inverted locally?
-        // No, I am simulating A perspective.
-        // So Ball > CourtY (Top) -> Goes to Opponent.
-        // If Ball >> CourtY (Out of bounds Top) -> I win? Or Opponent Miss?
-        // If Ball << -CourtY (Points behind Me) -> Opponent Wins.
-
-        // Wait, 'A' perspective:
-        // Me = Bottom (Positive Y?). 
-        // No. Camera 0,0.
-        // A (Bottom) is at Y=200.
-        // Opponent (Top) is at Y=-200.
-        // Net is at 0.
-
-        // If Ball Y > CourtY (240). Ball is BEHIND Me. -> Opponent (B) Scores.
-        // If Ball Y < -CourtY (-240). Ball is BEHIND Opponent. -> I (A) Score.
-
-        // If I am Role A:
-        // Check this logic.
-
         if (this.role === 'A' && !this.isFalling) {
             if (Math.abs(b.y) > GameConfig.GAME.COURT_Y_BOUNDARY) {
                 if (b.y > 0) {
-                    // Ball positive Y (Bottom side) -> Passed A -> B scores
                     this.handleScoreChange('B');
                 } else {
-                    // Ball negative Y (Top side) -> Passed B -> A scores
                     this.handleScoreChange('A');
                 }
             }
         }
-
-        // Note: If I am Role B.
-        // I simulate A perspective.
-        // But I DO NOT run scoring logic authoritatively. I wait for A.
-        // BUT if A sends "Score B", I update scoreB.
-        // Since scoreB is "Me", it works.
     }
 
     updateBatVelocities(dt) {
@@ -1132,9 +1074,7 @@ export default class GameScene extends Phaser.Scene {
         this.debugGraphics.lineBetween(screenBall.x, screenBall.y - chSize, screenBall.x, screenBall.y + chSize);
     }
 
-    // ========================================
-    // NETWORK SYNCHRONIZATION (RELATIVE SYSTEM)
-    // ========================================
+    // Network Synchronization
 
     sendBatUpdate() {
         if (this.pingPongConnection) {

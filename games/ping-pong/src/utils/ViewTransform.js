@@ -32,7 +32,6 @@ export default class ViewTransform {
      * @returns {{x: number, y: number}} Screen coordinates
      */
     worldToScreen(x, y, z = 0, role) {
-        // Apply global scale to world coordinates for display
         const scaledX = x * this.scale;
         const scaledY = y * this.scale;
         const scaledZ = z * this.scale;
@@ -40,11 +39,9 @@ export default class ViewTransform {
         let screenX, screenY;
 
         if (role === 'B') {
-            // Player B View: Inverted (180 degree rotation)
             screenX = this.centerX - scaledX;
             screenY = this.centerY - scaledY;
         } else {
-            // Player A View: Normal
             screenX = this.centerX + scaledX;
             screenY = this.centerY + scaledY;
         }
@@ -73,16 +70,13 @@ export default class ViewTransform {
         let scaledWorldX, scaledWorldY;
 
         if (role === 'B') {
-            // Player B sees inverted view
             scaledWorldX = this.centerX - screenX;
             scaledWorldY = this.centerY - screenY;
         } else {
-            // Player A sees normal view
             scaledWorldX = screenX - this.centerX;
             scaledWorldY = screenY - this.centerY;
         }
 
-        // Reverse the scaling to get actual physics units
         return {
             x: scaledWorldX / this.scale,
             y: scaledWorldY / this.scale
@@ -97,7 +91,6 @@ export default class ViewTransform {
      * @returns {number} Calculated scale
      */
     calculateDepthScale(z, baseScale, scaleFactor) {
-        // Apply global scale to the base sprite scale
         return (baseScale * this.scale) + ((z * this.scale) / scaleFactor);
     }
 

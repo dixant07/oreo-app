@@ -18,10 +18,8 @@ export class NetworkManager {
         this.isInitiator = false;
         this.iceServers = { game: [] };
 
-        // Connection instances
         this.gameConnection = null;
 
-        // Connection states
         this.isSignalingConnected = false;
         this.isEmbedded = false;
         this.reconnectAttempts = 0;
@@ -102,8 +100,6 @@ export class NetworkManager {
                 this.socket.on('session_established', (data) => {
                     console.log('[NetworkManager] Session established:', data.roomId);
                 });
-
-                // Setup WebRTC signaling handlers
                 this.setupSignalingHandlers();
 
             } catch (error) {
@@ -195,7 +191,6 @@ export class NetworkManager {
                 this.gameConnection.handleAnswer(data);
             }
         });
-
         this.socket.on('ice-candidate', (data) => {
             if (this.gameConnection) {
                 this.gameConnection.handleCandidate(data);

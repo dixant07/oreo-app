@@ -5,7 +5,6 @@
  * Other games would have their own configuration files.
  */
 const TableTennisConfig = {
-    // Asset keys used in Phaser
     ASSETS: {
         BALL: 'ball',
         BAT_A: 'bat_a',
@@ -15,10 +14,8 @@ const TableTennisConfig = {
         TABLE_BOUNCE: 'table_bounce',
     },
 
-    // Game title
     TITLE: 'Table Tennis Web',
 
-    // Scene keys
     SCENES: {
         BOOT: 'BootScene',
         MENU: 'MenuScene',

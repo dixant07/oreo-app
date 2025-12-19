@@ -74,13 +74,6 @@ export default class PhysicsUtils {
         return dist < (r1 + r2);
     }
 
-    /**
-     * Check if velocity is below threshold (stuck detection)
-     * @param {number} vx - X velocity
-     * @param {number} vy - Y velocity
-     * @param {number} vz - Z velocity
-     * @returns {boolean} True if stuck
-     */
     static isStuck(vx, vy, vz) {
         const threshold = GameConfig.PHYSICS.MIN_STUCK_VELOCITY;
         return Math.abs(vx) < threshold &&

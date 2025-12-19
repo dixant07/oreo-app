@@ -9,9 +9,6 @@
 const BASE_PATH = import.meta.env.BASE_URL || '/games/ping-pong/';
 
 const GameConfig = {
-    // ============================================
-    // DISPLAY SETTINGS
-    // ============================================
     DISPLAY: {
         WIDTH: window.innerWidth,
         HEIGHT: window.innerHeight,
@@ -22,9 +19,6 @@ const GameConfig = {
         TYPE: 'AUTO', // Phaser.AUTO will be resolved in main.js
     },
 
-    // ============================================
-    // PHYSICS SETTINGS
-    // ============================================
     PHYSICS: {
         GRAVITY: 400,                    // Even lower gravity for more hang time and slower movement
         BOUNCE_DAMPING: 1.0,            // Perfect elastic bounce as requested
@@ -58,9 +52,6 @@ const GameConfig = {
         BALL_RADIUS: 10,                 // Logical radius of the ball
     },
 
-    // ============================================
-    // GAME SETTINGS
-    // ============================================
     GAME: {
         // Game Rules
         COURT_Y_BOUNDARY: 600,           // Canonical boundary for authoritative scoring (Way past visible area)
@@ -83,18 +74,6 @@ const GameConfig = {
         FALL_MARGIN_X: 20,
         FALL_MARGIN_Y: 80,               // Increased Y margin to allow fall animation when ball flies past table ends
 
-        // Bat Polygon Vertices (simplified approx of the SVG shape)
-        // Scaled to match BAT_COLLISION_RADIUS roughly
-        // BAT_VERTICES: [
-        //     { x: 0, y: -15 },
-        //     { x: 11, y: -11 },
-        //     { x: 15, y: 0 },
-        //     { x: 11, y: 11 },
-        //     { x: 0, y: 15 },
-        //     { x: -11, y: 11 },
-        //     { x: -15, y: 0 },
-        //     { x: -11, y: -11 }
-        // ]
         BAT_VERTICES: [{ x: 0, y: -30 },
         { x: 22, y: -22 },
         { x: 30, y: 0 },
@@ -111,10 +90,6 @@ const GameConfig = {
         LANDING_ZONE_MAX_DEPTH: 0.9      // Maximum % of table depth to reach
     },
 
-    // ============================================
-    // NETWORK SETTINGS
-    // ============================================
-    // Network
     NETWORK: {
         // Recognize both 5173 (Vite default) and 3000 (alternative Vite) as local dev
         SERVER_URL: (window.location.port === '5173' || window.location.port === '3000')
@@ -124,9 +99,6 @@ const GameConfig = {
         RECONNECT_DELAY: 3000,
     },
 
-    // ============================================
-    // UI SETTINGS
-    // ============================================
     UI: {
         // Menu scene
         MENU_TITLE: 'Table Tennis Web',
@@ -173,9 +145,6 @@ const GameConfig = {
         MATCH_START_DELAY: 1000,          // milliseconds
     },
 
-    // ============================================
-    // ASSET SETTINGS (Table Tennis Specific)
-    // ============================================
     ASSETS: {
         // Sprite scales
         TABLE_SCALE: 0.32,
@@ -194,9 +163,6 @@ const GameConfig = {
         TABLE_BOUNCE_AUDIO: `${BASE_PATH}assets/audio/table_bounce.mp3`,
     },
 
-    // ============================================
-    // DEBUG SETTINGS
-    // ============================================
     DEBUG: {
         PHYSICS_DEBUG: false,             // Show Phaser physics debug
         LOG_NETWORK_MESSAGES: false,      // Log network messages to console
