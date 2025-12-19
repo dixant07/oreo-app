@@ -38,7 +38,7 @@ export const games: Game[] = [
         category: 'Strategy',
         image: '/tic-tac-toe.png', // Placeholder
         route: '/video/game',
-        isAvailable: false,
+        isAvailable: true,
     },
     {
         id: 'connect-four',
