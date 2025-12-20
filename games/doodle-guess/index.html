@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doodle Guess</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #000000;
+      --primary-dark: #333333;
+      --bg: #27ae60;
+      --white: #ffffff;
+      --text: #000000;
+      --shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      overflow: hidden;
+      font-family: 'Outfit', sans-serif;
+      color: var(--text);
+    }
+
+    #app {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      box-shadow: var(--shadow);
+      border-radius: 8px;
+    }
+
+    #guess-input {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 25px;
+      font-size: 18px;
+      border-radius: 30px;
+      border: 3px solid var(--primary);
+      outline: none;
+      width: 300px;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      color: #000;
+    }
+
+    #guess-input:focus {
+      width: 350px;
+      border-color: var(--primary-dark);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+  <input type="text" id="guess-input" class="hidden" placeholder="Type your guess here..." autocomplete="off">
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
