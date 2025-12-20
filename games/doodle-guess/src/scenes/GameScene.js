@@ -138,52 +138,86 @@ export default class GameScene extends Phaser.Scene {
     setupUI() {
         const { width, height } = this.scale;
 
-        // Background (Green)
+        // Background (Improved Gradient-like Green)
         this.add.rectangle(0, 0, width, height, 0x27ae60).setOrigin(0);
 
-        this.timerText = this.add.text(width / 2, 40, 'Time: 2:00', {
+        // -- Top UI Container --
+        // 1. Timer (Top Middle)
+        this.timerContainer = this.add.container(width / 2, 30);
+        const timerBg = this.add.graphics();
+        timerBg.fillStyle(0x000000, 0.4);
+        timerBg.fillRoundedRect(-70, 0, 140, 50, 15);
+        this.timerText = this.add.text(0, 25, '00:00', {
             fontSize: '24px',
-            color: '#000000',
+            color: '#ffffff',
             fontFamily: 'Outfit',
             fontWeight: '700'
-        }).setOrigin(0.5, 0);
+        }).setOrigin(0.5);
+        this.timerContainer.add([timerBg, this.timerText]);
 
-        this.myScoreText = this.add.text(40, 40, 'You: 0', {
-            fontSize: '28px',
-            color: '#000000',
+        // 2. "You" Label (Top Left)
+        this.myScoreContainer = this.add.container(20, 30);
+        const myBg = this.add.graphics();
+        myBg.fillStyle(0x3498db, 0.9); // Blue
+        myBg.fillRoundedRect(0, 0, 150, 70, 15);
+        const myLabel = this.add.text(75, 20, 'YOU', {
+            fontSize: '14px',
+            color: '#ffffff',
+            fontFamily: 'Outfit',
+            fontWeight: '600'
+        }).setOrigin(0.5);
+        this.myScoreText = this.add.text(75, 45, 'Score: 0', {
+            fontSize: '22px',
+            color: '#ffffff',
             fontFamily: 'Outfit',
             fontWeight: '800'
-        }).setOrigin(0, 0);
+        }).setOrigin(0.5);
+        this.myScoreContainer.add([myBg, myLabel, this.myScoreText]);
 
-        this.opponentScoreText = this.add.text(width - 40, 40, 'Opponent: 0', {
-            fontSize: '28px',
-            color: '#000000',
+        // 3. "Opponent" Label (Top Right)
+        this.opponentScoreContainer = this.add.container(width - 170, 30);
+        const oppBg = this.add.graphics();
+        oppBg.fillStyle(0xe74c3c, 0.9); // Red
+        oppBg.fillRoundedRect(0, 0, 150, 70, 15);
+        const oppLabel = this.add.text(75, 20, 'OPPONENT', {
+            fontSize: '14px',
+            color: '#ffffff',
+            fontFamily: 'Outfit',
+            fontWeight: '600'
+        }).setOrigin(0.5);
+        this.opponentScoreText = this.add.text(75, 45, 'Score: 0', {
+            fontSize: '22px',
+            color: '#ffffff',
             fontFamily: 'Outfit',
             fontWeight: '800'
-        }).setOrigin(1, 0);
+        }).setOrigin(0.5);
+        this.opponentScoreContainer.add([oppBg, oppLabel, this.opponentScoreText]);
 
-        this.wordDisplay = this.add.text(width / 2, 60, 'CONNECTING...', {
-            fontSize: '36px',
-            color: '#000000',
-            fontWeight: '700',
-            fontFamily: 'Outfit'
+        // 4. Word Display (Below Timer)
+        this.wordDisplay = this.add.text(width / 2, 100, 'CONNECTING...', {
+            fontSize: '32px',
+            color: '#ffffff',
+            fontWeight: '800',
+            fontFamily: 'Outfit',
+            stroke: '#000000',
+            strokeThickness: 4
         }).setOrigin(0.5);
 
-        this.hintText = this.add.text(width / 2, 110, '', {
-            fontSize: '20px',
-            color: '#000000',
+        this.hintText = this.add.text(width / 2, 140, '', {
+            fontSize: '18px',
+            color: '#ffffff',
             fontFamily: 'Outfit',
             fontWeight: '600'
         }).setOrigin(0.5);
 
-        this.opponentTypingText = this.add.text(width / 2, height - 120, '', {
-            fontSize: '22px',
+        this.opponentTypingText = this.add.text(width / 2, height / 2, '', {
+            fontSize: '28px',
             color: '#000000',
             fontFamily: 'Outfit',
-            fontWeight: '800',
+            fontWeight: '900',
             fontStyle: 'italic',
             stroke: '#ffffff',
-            strokeThickness: 4
+            strokeThickness: 6
         }).setOrigin(0.5).setDepth(2000);
     }
 
@@ -191,34 +225,41 @@ export default class GameScene extends Phaser.Scene {
         if (this.drawerUIContainer) this.drawerUIContainer.destroy();
         const { width, height } = this.scale;
 
-        this.drawerUIContainer = this.add.container(20, height - 20).setDepth(150);
+        // Tool area height
+        const toolHeight = 140;
+        this.drawerUIContainer = this.add.container(0, height).setDepth(150);
         const toolbar = this.drawerUIContainer;
 
-        // Background for toolbar
-        const bg = this.add.rectangle(0, 0, 420, 160, 0x000000, 0.7).setOrigin(0, 1);
+        // Background for toolbar - Full Width Bottom
+        const bg = this.add.graphics();
+        bg.fillStyle(0x000000, 0.85);
+        bg.fillRect(0, -toolHeight, width, toolHeight);
         toolbar.add(bg);
 
-        // 1. Color Palette (10 colors, 5x2)
+        // 1. Color Palette (10 colors, 5x2) - Left Side
         const colors = [
             '#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff',
             '#ffff00', '#ff00ff', '#00ffff', '#ffa500', '#8b4513'
         ];
 
         colors.forEach((color, i) => {
-            const x = 20 + (i % 5) * 45;
-            const y = -110 + Math.floor(i / 5) * 45;
-            const swatch = this.add.rectangle(x, y, 35, 35, Phaser.Display.Color.HexStringToColor(color).color)
+            const x = 30 + (i % 5) * 50;
+            const y = -toolHeight + 25 + Math.floor(i / 5) * 50;
+            const swatch = this.add.rectangle(x, y, 40, 40, Phaser.Display.Color.HexStringToColor(color).color)
                 .setStrokeStyle(2, 0xffffff)
                 .setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => {
                     this.selectedColor = color;
-                    if (this.selectedTool === 'eraser') this.selectedTool = 'pen';
+                    if (this.selectedTool === 'eraser') {
+                        this.selectedTool = 'pen';
+                        this.updateToolButtons();
+                    }
                     console.log('[DoodleGuess] Selected color:', color);
                 });
             toolbar.add(swatch);
         });
 
-        // 2. Tools
+        // 2. Tools - Middle
         const tools = [
             { id: 'pen', label: 'PEN' },
             { id: 'eraser', label: 'ERASER' },
@@ -227,41 +268,73 @@ export default class GameScene extends Phaser.Scene {
             { id: 'clear', label: 'CLEAR' }
         ];
 
+        this.toolButtons = {};
         tools.forEach((tool, i) => {
-            const x = 250 + (i % 2) * 80;
-            const y = -110 + Math.floor(i / 2) * 45;
-            if (tool.id === 'undo' || tool.id === 'clear') {
-                const btn = this.add.text(x, y, tool.label, { fontSize: '14px', fontWeight: '800', backgroundColor: '#e74c3c', padding: { x: 10, y: 5 }, color: '#fff' })
-                    .setOrigin(0, 0.5)
-                    .setInteractive({ useHandCursor: true })
-                    .on('pointerdown', () => {
-                        if (tool.id === 'undo') this.undo();
-                        else this.clearCanvas(true);
-                    });
-                toolbar.add(btn);
-            } else {
-                const btn = this.add.text(x, y, tool.label, { fontSize: '14px', fontWeight: '800', backgroundColor: '#34495e', padding: { x: 10, y: 5 }, color: '#fff' })
-                    .setOrigin(0, 0.5)
-                    .setInteractive({ useHandCursor: true })
-                    .on('pointerdown', () => {
-                        this.selectedTool = tool.id;
-                        if (tool.id === 'eraser') this.selectedColor = '#ffffff';
-                        console.log('[DoodleGuess] Selected tool:', tool.id);
-                    });
-                toolbar.add(btn);
-            }
+            const row = Math.floor(i / 3);
+            const col = i % 3;
+            const x = width / 2 - 40 + (col - 1) * 110;
+            const y = -toolHeight + 35 + row * 50;
+
+            const isAction = tool.id === 'undo' || tool.id === 'clear';
+            const btnBg = this.add.rectangle(x, y, 100, 40, isAction ? 0xe74c3c : 0x34495e)
+                .setInteractive({ useHandCursor: true });
+            
+            const btnText = this.add.text(x, y, tool.label, { 
+                fontSize: '16px', 
+                fontWeight: '800', 
+                fontFamily: 'Outfit',
+                color: '#fff' 
+            }).setOrigin(0.5);
+
+            btnBg.on('pointerdown', () => {
+                if (tool.id === 'undo') this.undo();
+                else if (tool.id === 'clear') this.clearCanvas(true);
+                else {
+                    this.selectedTool = tool.id;
+                    if (tool.id === 'eraser') this.selectedColor = '#ffffff';
+                    this.updateToolButtons();
+                }
+            });
+
+            if (!isAction) this.toolButtons[tool.id] = btnBg;
+            toolbar.add([btnBg, btnText]);
         });
 
-        // 3. Weight Selector
-        [4, 8, 12].forEach((w, i) => {
-            const x = 20 + i * 40;
-            const btn = this.add.circle(x + 20, -20, w / 2, 0xffffff)
+        // 3. Weight Selector - Right Side
+        const weights = [4, 8, 16, 24];
+        weights.forEach((w, i) => {
+            const x = width - 150 + (i % 2) * 60;
+            const y = -toolHeight + 35 + Math.floor(i / 2) * 50;
+            
+            const btn = this.add.circle(x, y, 15, 0x34495e)
                 .setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => {
                     this.selectedWidth = w;
-                    console.log('[DoodleGuess] Selected width:', w);
+                    this.updateWeightButtons();
                 });
-            toolbar.add(btn);
+            
+            const indicator = this.add.circle(x, y, w / 4 + 2, 0xffffff);
+            
+            if (!this.weightButtons) this.weightButtons = [];
+            this.weightButtons.push({ bg: btn, weight: w });
+            toolbar.add([btn, indicator]);
+        });
+
+        this.updateToolButtons();
+        this.updateWeightButtons();
+    }
+
+    updateToolButtons() {
+        if (!this.toolButtons) return;
+        Object.keys(this.toolButtons).forEach(id => {
+            this.toolButtons[id].setFillStyle(id === this.selectedTool ? 0x2ecc71 : 0x34495e);
+        });
+    }
+
+    updateWeightButtons() {
+        if (!this.weightButtons) return;
+        this.weightButtons.forEach(btn => {
+            btn.bg.setFillStyle(btn.weight === this.selectedWidth ? 0x2ecc71 : 0x34495e);
         });
     }
 
@@ -347,12 +420,43 @@ export default class GameScene extends Phaser.Scene {
 
     updateCanvasPosition() {
         const { width, height } = this.scale;
-        const availableWidth = width * 0.9;
-        const availableHeight = height * 0.6;
+        
+        // Define margins
+        const topMargin = 160;
+        const bottomMargin = this.isDrawer ? 150 : 80;
+        
+        const availableWidth = width * 0.95;
+        const availableHeight = height - topMargin - bottomMargin;
 
         const scale = Math.min(availableWidth / 800, availableHeight / 600);
         this.drawingSprite.setScale(scale);
-        this.drawingSprite.setPosition(width / 2, height / 2 - 20);
+        
+        // Center vertically in the available space
+        const centerY = topMargin + (availableHeight / 2);
+        this.drawingSprite.setPosition(width / 2, centerY);
+    }
+
+    handleResize() {
+        const { width, height } = this.scale;
+        
+        // Update all UI elements positions
+        if (this.timerContainer) this.timerContainer.setX(width / 2);
+        if (this.myScoreContainer) this.myScoreContainer.setX(20);
+        if (this.opponentScoreContainer) this.opponentScoreContainer.setX(width - 170);
+        if (this.wordDisplay) this.wordDisplay.setX(width / 2);
+        if (this.hintText) this.hintText.setX(width / 2);
+        if (this.opponentTypingText) {
+            this.opponentTypingText.setX(width / 2);
+            this.opponentTypingText.setY(height / 2);
+        }
+
+        if (this.drawerUIContainer) {
+            this.drawerUIContainer.setPosition(0, height);
+            // Re-render background or update it
+            this.createDrawerUI();
+        }
+
+        this.updateCanvasPosition();
     }
 
     showWordChoice() {
@@ -421,7 +525,9 @@ export default class GameScene extends Phaser.Scene {
     updateTimerDisplay() {
         const mins = Math.floor(this.timer / 60);
         const secs = this.timer % 60;
-        this.timerText.setText(`Time: ${mins}:${secs.toString().padStart(2, '0')}`);
+        if (this.timerText) {
+            this.timerText.setText(`${mins}:${secs.toString().padStart(2, '0')}`);
+        }
     }
 
     syncGameState() {
@@ -617,7 +723,7 @@ export default class GameScene extends Phaser.Scene {
             // Drawer perspective: opponent guessed
             const finalPoints = remotePoints !== null ? remotePoints : this.roundScore;
             this.opponentScore += finalPoints;
-            this.opponentScoreText.setText(`Opponent: ${this.opponentScore}`);
+            if (this.opponentScoreText) this.opponentScoreText.setText(`Score: ${this.opponentScore}`);
 
             if (sendToRemote) {
                 this.doodleConnection.sendRoundEnd(guessedCorrectly, this.currentWord, finalPoints);
@@ -626,7 +732,7 @@ export default class GameScene extends Phaser.Scene {
             // Guesser perspective: you guessed
             const finalPoints = remotePoints !== null ? remotePoints : this.roundScore;
             this.myScore += finalPoints;
-            this.myScoreText.setText(`You: ${this.myScore}`);
+            if (this.myScoreText) this.myScoreText.setText(`Score: ${this.myScore}`);
 
             if (sendToRemote) {
                 // Guesser usually doesn't send round_end, but let's be safe
