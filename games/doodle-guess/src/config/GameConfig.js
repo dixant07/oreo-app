@@ -13,7 +13,7 @@ const GameConfig = {
     },
 
     GAME: {
-        ROUND_TIME: 120, // 2 minutes in seconds
+        ROUND_TIME: 60, // 2 minutes in seconds
         HINT_INTERVAL: 30, // Show a hint every 30 seconds
         MAX_WORDS_TO_CHOICE: 3,
         WORDS: [

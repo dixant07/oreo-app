@@ -33,6 +33,10 @@ export default class GameScene extends Phaser.Scene {
 
         this.guessInput = null;
         this.opponentTypingText = null;
+
+        this.myScore = 0;
+        this.opponentScore = 0;
+        this.roundScore = 0;
     }
 
     create() {
@@ -125,9 +129,10 @@ export default class GameScene extends Phaser.Scene {
         this.events.on('remote_guess', (data) => this.handleRemoteGuess(data));
         this.events.on('remote_game_state', (data) => this.handleRemoteGameState(data));
         this.events.on('remote_typing_sync', (data) => this.handleRemoteTyping(data));
+        this.events.on('remote_typing_feedback', (data) => this.handleRemoteTypingFeedback(data));
         this.events.on('remote_flood_fill', (data) => this.handleRemoteFloodFill(data));
         this.events.on('remote_undo', () => this.handleRemoteUndo());
-        this.events.on('remote_round_end', (data) => this.endRound(data.guessedCorrectly, false));
+        this.events.on('remote_round_end', (data) => this.endRound(data.guessedCorrectly, false, data.points));
     }
 
     setupUI() {
@@ -136,11 +141,25 @@ export default class GameScene extends Phaser.Scene {
         // Background (Green)
         this.add.rectangle(0, 0, width, height, 0x27ae60).setOrigin(0);
 
-        this.timerText = this.add.text(width - 40, 40, 'Time: 2:00', {
-            fontSize: '28px',
+        this.timerText = this.add.text(width / 2, 40, 'Time: 2:00', {
+            fontSize: '24px',
             color: '#000000',
             fontFamily: 'Outfit',
             fontWeight: '700'
+        }).setOrigin(0.5, 0);
+
+        this.myScoreText = this.add.text(40, 40, 'You: 0', {
+            fontSize: '28px',
+            color: '#000000',
+            fontFamily: 'Outfit',
+            fontWeight: '800'
+        }).setOrigin(0, 0);
+
+        this.opponentScoreText = this.add.text(width - 40, 40, 'Opponent: 0', {
+            fontSize: '28px',
+            color: '#000000',
+            fontFamily: 'Outfit',
+            fontWeight: '800'
         }).setOrigin(1, 0);
 
         this.wordDisplay = this.add.text(width / 2, 60, 'CONNECTING...', {
@@ -158,18 +177,22 @@ export default class GameScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         this.opponentTypingText = this.add.text(width / 2, height - 120, '', {
-            fontSize: '18px',
+            fontSize: '22px',
             color: '#000000',
             fontFamily: 'Outfit',
-            fontWeight: '600',
-            fontStyle: 'italic'
-        }).setOrigin(0.5);
+            fontWeight: '800',
+            fontStyle: 'italic',
+            stroke: '#ffffff',
+            strokeThickness: 4
+        }).setOrigin(0.5).setDepth(2000);
     }
 
     createDrawerUI() {
+        if (this.drawerUIContainer) this.drawerUIContainer.destroy();
         const { width, height } = this.scale;
 
-        const toolbar = this.add.container(20, height - 20).setDepth(150);
+        this.drawerUIContainer = this.add.container(20, height - 20).setDepth(150);
+        const toolbar = this.drawerUIContainer;
 
         // Background for toolbar
         const bg = this.add.rectangle(0, 0, 420, 160, 0x000000, 0.7).setOrigin(0, 1);
@@ -430,10 +453,54 @@ export default class GameScene extends Phaser.Scene {
         this.drawingTexture.refresh();
     }
 
-    handleRemoteTyping(data) {
-        if (this.opponentTypingText) {
-            this.opponentTypingText.setText(data.text ? `Opponent is typing: ${data.text}` : '');
+    showGuessUI() {
+        if (this.guessInput) {
+            this.guessInput.classList.remove('hidden');
+            this.guessInput.focus();
+
+            const handleKey = (e) => {
+                if (e.key === 'Enter') {
+                    const val = this.guessInput.value.trim();
+                    if (val) {
+                        this.doodleConnection.sendGuess(val);
+                        this.guessInput.value = '';
+                    }
+                }
+            };
+            this.guessInput.addEventListener('keydown', handleKey);
+            this.events.once('shutdown', () => {
+                this.guessInput.removeEventListener('keydown', handleKey);
+                this.guessInput.classList.add('hidden');
+            });
         }
+    }
+
+    handleRemoteTyping(data) {
+        // No longer informed real-time as per user request
+    }
+
+    getLevenshteinDistance(s1, s2) {
+        if (s1.length < s2.length) [s1, s2] = [s2, s1];
+        if (s2.length === 0) return s1.length;
+
+        let costs = new Array(s2.length + 1);
+        for (let i = 0; i <= s1.length; i++) {
+            let lastValue = i;
+            for (let j = 0; j <= s2.length; j++) {
+                if (i === 0) costs[j] = j;
+                else {
+                    if (j > 0) {
+                        let newValue = costs[j - 1];
+                        if (s1.charAt(i - 1) !== s2.charAt(j - 1))
+                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                        costs[j - 1] = lastValue;
+                        lastValue = newValue;
+                    }
+                }
+            }
+            if (i > 0) costs[s2.length] = lastValue;
+        }
+        return costs[s2.length];
     }
 
     handleRemoteFloodFill(data) {
@@ -464,40 +531,73 @@ export default class GameScene extends Phaser.Scene {
     }
 
     handleRemoteGuess(data) {
-        if (this.isDrawer && this.gameState === 'DRAWING') {
-            if (data.guess.toLowerCase() === this.currentWord.toLowerCase()) {
-                this.endRound(true);
-            }
+        if (!this.isDrawer || this.gameState !== 'DRAWING') return;
+
+        const guess = data.guess;
+        if (!guess) return;
+
+        const dist = this.getLevenshteinDistance(guess.toLowerCase(), this.currentWord.toLowerCase());
+        let status = 'wrong';
+        let color = '#ff0000'; // Red
+        let points = 0;
+
+        if (dist === 0) {
+            status = 'correct';
+            color = '#27ae60'; // Green
+            this.roundScore = 10;
+        } else if (dist <= 2) {
+            status = 'close';
+            color = '#f1c40f'; // Yellow
+            this.roundScore = Math.max(this.roundScore, 5);
+        }
+
+        this.showFeedback(guess, color);
+
+        // Notify guesser about their status
+        this.doodleConnection.sendTypingFeedback(status, guess);
+
+        if (status === 'correct') {
+            this.time.delayedCall(1000, () => this.endRound(true));
         }
     }
 
-    showGuessUI() {
-        if (this.guessInput) {
-            this.guessInput.classList.remove('hidden');
-            this.guessInput.focus();
+    handleRemoteTypingFeedback(data) {
+        if (this.isDrawer || !this.guessInput) return;
 
-            const handleInput = (e) => {
-                this.doodleConnection.sendTyping(this.guessInput.value.trim());
-            };
+        let color = '#ff0000';
+        if (data.status === 'correct') color = '#27ae60';
+        else if (data.status === 'close') color = '#f1c40f';
 
-            const handleKey = (e) => {
-                if (e.key === 'Enter') {
-                    const val = this.guessInput.value.trim();
-                    if (val) {
-                        this.doodleConnection.sendGuess(val);
-                        this.guessInput.value = '';
-                        this.doodleConnection.sendTyping('');
-                    }
-                }
-            };
-            this.guessInput.addEventListener('input', handleInput);
-            this.guessInput.addEventListener('keydown', handleKey);
-            this.events.once('shutdown', () => {
-                this.guessInput.removeEventListener('input', handleInput);
-                this.guessInput.removeEventListener('keydown', handleKey);
-                this.guessInput.classList.add('hidden');
-            });
+        if (data.status === 'correct') {
+            this.roundScore = 10;
+        } else if (data.status === 'close') {
+            this.roundScore = Math.max(this.roundScore, 5);
         }
+
+        this.showFeedback(data.text, color);
+    }
+
+    showFeedback(text, color) {
+        if (!this.opponentTypingText) return;
+
+        this.opponentTypingText.setText(text.toUpperCase());
+        this.opponentTypingText.setColor(color);
+        this.opponentTypingText.setAlpha(1);
+
+        // Hide after 3 seconds
+        if (this.feedbackTimer) this.feedbackTimer.remove();
+        this.feedbackTimer = this.time.delayedCall(3000, () => {
+            if (this.opponentTypingText) {
+                this.tweens.add({
+                    targets: this.opponentTypingText,
+                    alpha: 0,
+                    duration: 500,
+                    onComplete: () => {
+                        if (this.opponentTypingText) this.opponentTypingText.setText('');
+                    }
+                });
+            }
+        });
     }
 
     clearCanvas(send = true) {
@@ -508,12 +608,32 @@ export default class GameScene extends Phaser.Scene {
         if (send) this.doodleConnection.sendClearCanvas();
     }
 
-    endRound(guessedCorrectly, sendToRemote = true) {
+    endRound(guessedCorrectly, sendToRemote = true, remotePoints = null) {
         if (this.gameState === 'RESULTS') return;
         this.gameState = 'RESULTS';
-        if (sendToRemote && this.isDrawer) {
-            this.doodleConnection.sendRoundEnd(guessedCorrectly, this.currentWord);
+
+        // Apply scoring at end of round
+        if (this.isDrawer) {
+            // Drawer perspective: opponent guessed
+            const finalPoints = remotePoints !== null ? remotePoints : this.roundScore;
+            this.opponentScore += finalPoints;
+            this.opponentScoreText.setText(`Opponent: ${this.opponentScore}`);
+
+            if (sendToRemote) {
+                this.doodleConnection.sendRoundEnd(guessedCorrectly, this.currentWord, finalPoints);
+            }
+        } else {
+            // Guesser perspective: you guessed
+            const finalPoints = remotePoints !== null ? remotePoints : this.roundScore;
+            this.myScore += finalPoints;
+            this.myScoreText.setText(`You: ${this.myScore}`);
+
+            if (sendToRemote) {
+                // Guesser usually doesn't send round_end, but let's be safe
+                this.doodleConnection.sendRoundEnd(guessedCorrectly, this.currentWord, finalPoints);
+            }
         }
+
         if (this.timerEvent) this.timerEvent.remove();
         if (this.guessInput) this.guessInput.classList.add('hidden');
 
@@ -536,20 +656,79 @@ export default class GameScene extends Phaser.Scene {
             fontWeight: '600'
         }).setOrigin(0.5).setDepth(101);
 
-        const homeBtn = this.add.text(width / 2, height / 2 + 100, 'BACK TO HOME', {
-            fontSize: '20px',
-            fontWeight: '700',
-            backgroundColor: '#2ecc71',
-            padding: { x: 30, y: 15 },
-            color: '#000000',
-            fontFamily: 'Outfit'
-        })
-            .setOrigin(0.5)
-            .setDepth(101)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerdown', () => {
+        // Check win condition
+        const diff = Math.abs(this.myScore - this.opponentScore);
+        if (diff >= 20) {
+            const winner = this.myScore > this.opponentScore ? 'YOU WIN!' : 'OPPONENT WINS!';
+            resultText.setText(winner);
+            resultText.setColor('#f1c40f');
+
+            this.add.text(width / 2, height / 2 + 100, 'GAME OVER', {
+                fontSize: '32px',
+                fontWeight: '900',
+                color: '#ffffff',
+                fontFamily: 'Outfit'
+            }).setOrigin(0.5).setDepth(101);
+
+            this.add.text(width / 2, height / 2 + 160, 'BACK TO HOME', {
+                fontSize: '20px',
+                fontWeight: '700',
+                backgroundColor: '#2ecc71',
+                padding: { x: 30, y: 15 },
+                color: '#000000',
+                fontFamily: 'Outfit'
+            }).setOrigin(0.5).setDepth(101).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
                 window.location.href = '/home';
             });
+            return;
+        }
+
+        // Show transition after 3 seconds
+        this.time.delayedCall(3000, () => {
+            overlay.destroy();
+            resultText.destroy();
+            wordText.destroy();
+            this.startTransition();
+        });
+    }
+
+    startTransition() {
+        this.gameState = 'TRANSITION';
+        this.isDrawer = !this.isDrawer; // Swap roles
+
+        const { width, height } = this.scale;
+        const msg = this.isDrawer ? 'YOU ARE CHOOSING...' : 'OPPONENT IS CHOOSING...';
+
+        const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.7).setOrigin(0).setDepth(200);
+        const transText = this.add.text(width / 2, height / 2, msg, {
+            fontSize: '36px',
+            fontWeight: '800',
+            color: '#2ecc71',
+            fontFamily: 'Outfit'
+        }).setOrigin(0.5).setDepth(201);
+
+        this.time.delayedCall(5000, () => {
+            overlay.destroy();
+            transText.destroy();
+            this.startNextRound();
+        });
+    }
+
+    startNextRound() {
+        this.clearCanvas(false);
+        this.gameState = 'WAITING';
+        this.roundScore = 0;
+        this.wordDisplay.setText(this.isDrawer ? 'PICK A WORD' : 'WAITING FOR DRAWER...');
+        this.hintText.setText('');
+
+        if (this.isDrawer) {
+            this.showWordChoice();
+            this.createDrawerUI();
+        } else {
+            // Remove drawer UI if it exists (container needs to be destroyed or cleared)
+            // Re-setup basic guess UI
+            if (this.drawerUIContainer) this.drawerUIContainer.destroy();
+        }
     }
 
     saveUndo() {

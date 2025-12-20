@@ -54,6 +54,10 @@ export class DoodleGuessConnection {
                 this.scene.events.emit('remote_typing_sync', msg);
                 break;
 
+            case 'typing_feedback':
+                this.scene.events.emit('remote_typing_feedback', msg);
+                break;
+
             case 'flood_fill':
                 this.scene.events.emit('remote_flood_fill', msg);
                 break;
@@ -147,6 +151,19 @@ export class DoodleGuessConnection {
         }
     }
 
+    sendTypingFeedback(status, text, points = 0) {
+        const data = {
+            type: 'typing_feedback',
+            status: status, // 'wrong', 'close', 'correct'
+            text: text,
+            points: points
+        };
+        const encoded = NetworkProtocol.encode(data);
+        if (encoded) {
+            this.gameConnection.send(encoded, false);
+        }
+    }
+
     sendFloodFill(x, y, color) {
         const data = {
             type: 'flood_fill',
@@ -168,11 +185,12 @@ export class DoodleGuessConnection {
         }
     }
 
-    sendRoundEnd(guessedCorrectly, word) {
+    sendRoundEnd(guessedCorrectly, word, points = 0) {
         const data = {
             type: 'round_end',
             guessedCorrectly: guessedCorrectly,
-            word: word
+            word: word,
+            points: points
         };
         const encoded = NetworkProtocol.encode(data);
         if (encoded) {
