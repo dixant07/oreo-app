@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-    base: '/games/ping-pong/', // Served from /games/ subdirectory in Next.js app
+    base: '/games/doodle-guess/', // Served from /games/ subdirectory in Next.js app
     build: {
         outDir: 'dist',
         assetsDir: 'assets',
